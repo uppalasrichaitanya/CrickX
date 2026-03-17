@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="logo.png" alt="CrickX Logo" width="200" style="border-radius: 20%; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"/>
+</div>
+
 # CrickX 🏏
 
 **CrickX** is a 2D professional cricket simulation game built entirely in Godot 4.2.2 (GDScript). It focuses on deep simulation mechanics, a high-quality dark UI, dynamic commentary, and realistic match flows.
