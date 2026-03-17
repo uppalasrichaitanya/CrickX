@@ -1,0 +1,14 @@
+# Godot Engine generated files
+.godot/
+.import/
+
+# Logs
+*.log
+
+# Godot Engine binary
+Godot_Engine/
+
+# OS files
+Thumbs.db
+.DS_Store
+*.tmp
