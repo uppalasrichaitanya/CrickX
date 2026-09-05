@@ -107,5 +107,15 @@ Defined in `Constants.gd` and Resources (`PlayerData.gd`, `TeamData.gd`).
 
 ---
 
+## 8. Tournament Mode (`autoloads/TournamentManager.gd` + UI)
+- **`TournamentManager.gd`**: World Cup structure — 2 seeded groups of 4, per-group round-robin (12 fixtures), standings with points → NRR → wins tie-breaks, semis (A1 v B2, B1 v A2), and a final. Autosaves after every result via `SaveManager` (JSON under `user://saves/tournament.json`) and rehydrates TeamData references on load. NRR uses the `total_runs/overs_tournament` fields on `TeamData` via `calculate_nrr()`.
+- **Toss refactor**: `MatchEngine.start_match` now takes the human's *team* (not booleans) and derives `is_human_batting`/`is_human_bowling` from `human_side == batting_team` at each innings start — the human can now bat second. `GameManager.return_scene` routes the Scorecard's Continue to the TournamentHub mid-tournament (MainMenu otherwise).
+- **UI**: `TournamentHub.tscn` (team picker for new tournaments, both group tables via `PointsTable.gd`, fixture list with results, Play Next Fixture → `TossScreen.tscn` → MatchHUD, Sim Other Matches via a quick statistical sim for AI fixtures, abandon/resume), `TossScreen.tscn` (heads/tails call, coin animation, bat/bowl choice — the human's result of the toss decides who chooses).
+- **Result recording**: `TossScreen` stashes `pending_fixture_result` meta; on return, the Hub records it into standings and advances the stage when a round completes.
+- **Squads**: every team now has 15 players (XI auto-selected as the first 11) matching `SQUAD_SIZE`.
+- **Verified headlessly**: the smoke test runs an entire 15-match tournament through the real engine (fast-forward), asserting stage transitions, standings math, champion, and a save/load round-trip.
+
+---
+
 **End of Document**  
 *Use this text file directly as a knowledge base prompt when expanding features next.*

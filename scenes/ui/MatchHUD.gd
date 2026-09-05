@@ -544,7 +544,9 @@ func _on_second_innings_starting() -> void:
 	# Show innings break overlay
 	innings_break_popup.visible = true
 	var target = GameManager.state.get("total_runs", 0) + 1
-	var tail = "AI batting in progress..." if not MatchEngine.full_mode else "AI batting — you bowl!"
+	var tail = "AI batting in progress..."
+	if MatchEngine.is_human_bowling:
+		tail = "AI batting — you bowl!"
 	lbl_innings_break.text = "INNINGS BREAK\n\n" + GameManager.bowling_team.team_name + " need " + str(target) + " to win!\n\n" + tail
 	
 	await get_tree().create_timer(0.5 if MatchEngine.fast_forward else 3.0).timeout

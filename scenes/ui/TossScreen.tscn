@@ -1,0 +1,150 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/TossScreen.gd" id="1"]
+
+[node name="TossScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.051, 0.067, 0.09, 1)
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 60.0
+offset_right = 200.0
+offset_bottom = 100.0
+text = "🪙 THE TOSS"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_font_sizes/font_size = 32
+
+[node name="Teams" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -400.0
+offset_top = 120.0
+offset_right = 400.0
+offset_bottom = 170.0
+theme_override_constants/separation = 40
+alignment = 1
+
+[node name="HomeTeam" type="Label" parent="Teams"]
+layout_mode = 2
+text = "TEAM A"
+theme_override_font_sizes/font_size = 24
+
+[node name="VS" type="Label" parent="Teams"]
+layout_mode = 2
+text = "VS"
+theme_override_colors/font_color = Color(1, 0.098, 0.267, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="AwayTeam" type="Label" parent="Teams"]
+layout_mode = 2
+text = "TEAM B"
+theme_override_font_sizes/font_size = 24
+
+[node name="Coin" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_top = 0.35
+anchor_right = 0.5
+anchor_bottom = 0.35
+offset_left = -40.0
+offset_top = -40.0
+offset_right = 40.0
+offset_bottom = 40.0
+text = "🪙"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 64
+
+[node name="Result" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -350.0
+offset_top = 340.0
+offset_right = 350.0
+offset_bottom = 380.0
+text = "Call it in the air..."
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 2
+
+[node name="CallRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -180.0
+offset_top = 420.0
+offset_right = 180.0
+offset_bottom = 470.0
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="BtnHeads" type="Button" parent="CallRow"]
+custom_minimum_size = Vector2(140, 50)
+layout_mode = 2
+text = "HEADS"
+
+[node name="BtnTails" type="Button" parent="CallRow"]
+custom_minimum_size = Vector2(140, 50)
+layout_mode = 2
+text = "TAILS"
+
+[node name="ChoiceRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -220.0
+offset_top = 500.0
+offset_right = 220.0
+offset_bottom = 550.0
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="BtnBat" type="Button" parent="ChoiceRow"]
+custom_minimum_size = Vector2(180, 50)
+layout_mode = 2
+text = "🏏 BAT FIRST"
+
+[node name="BtnBowl" type="Button" parent="ChoiceRow"]
+custom_minimum_size = Vector2(180, 50)
+layout_mode = 2
+text = "🎳 BOWL FIRST"
+
+[node name="StartRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -80.0
+offset_right = 150.0
+offset_bottom = -30.0
+alignment = 1
+
+[node name="BtnStart" type="Button" parent="StartRow"]
+custom_minimum_size = Vector2(260, 50)
+layout_mode = 2
+text = "▶ Start Match"

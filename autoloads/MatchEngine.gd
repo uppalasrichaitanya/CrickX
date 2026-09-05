@@ -29,7 +29,9 @@ var weather_pitch := WeatherPitchSystem.new()
 var _hud_connected: bool = false
 var _match_pending: bool = false
 var _match_gen: int = 0  # Generation token — zombie coroutines from old matches abort on mismatch
-var full_mode: bool = false  # Full Match: human bats 1st innings, bowls 2nd
+var full_mode: bool = false  # DEPRECATED: implied by human_side != null (kept for HUD text)
+var human_side: TeamData = null  # The player's team this match (null = pure AI match)
+var human_bowls_role: bool = true  # Does the human play their bowling innings?
 var fast_forward: bool = false  # Collapse inter-ball delays for quick auto-sim
 var _pending_drs_outcome: Dictionary = {}
 var _pending_drs_wicket_type: String = ""
@@ -53,12 +55,14 @@ func note_hud_gone() -> void:
 	_hud_connected = false
 
 func start_match(team_a: TeamData, team_b: TeamData, format: int,
-		human_bats: bool = true, human_bowls: bool = false, full_game: bool = false) -> void:
+		human_team: TeamData = null, human_plays_bowling: bool = true) -> void:
 	_match_gen += 1  # Any ball-flow coroutines still awaiting from the last match now abort.
 	GameManager.start_new_match(team_a, team_b, format)
-	is_human_batting = human_bats
-	is_human_bowling = human_bowls
-	full_mode = full_game
+	human_side = human_team
+	human_bowls_role = human_plays_bowling
+	# Roles are derived from the human's team: bat when their side is at the
+	# crease, bowl when it fields (if the mode allows bowling).
+	_apply_roles()
 	_prev_bowler = null
 	_hat_trick_ball = false
 	for t in [team_a, team_b]:
@@ -81,6 +85,17 @@ func start_match(team_a: TeamData, team_b: TeamData, format: int,
 			_match_pending = false
 			push_warning("MatchEngine: HUD never reported ready — starting ball flow anyway.")
 			_begin_match_flow()
+
+# Human plays their team's role in the current innings: bats if their side
+# is at the crease, bowls otherwise (when the mode allows bowling).
+# Pure AI matches (human_side == null) leave both flags false.
+func _apply_roles() -> void:
+	if human_side == null:
+		is_human_batting = false
+		is_human_bowling = false
+		return
+	is_human_batting = (GameManager.batting_team == human_side)
+	is_human_bowling = human_bowls_role and (GameManager.bowling_team == human_side)
 
 func _begin_match_flow() -> void:
 	AudioManager.start_ambient()
@@ -447,9 +462,8 @@ func _end_innings() -> void:
 		if gen != _match_gen:
 			return
 		GameManager.swap_innings()
-		# Second innings: AI bats. In Full Match mode the human bowls.
-		is_human_batting = false
-		is_human_bowling = full_mode
+		# Second innings: roles re-derive from the human's team.
+		_apply_roles()
 		runs_this_over = 0
 		wickets_this_over = 0
 		balls_this_over_log = []

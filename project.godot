@@ -25,6 +25,7 @@ AudioManager="*res://autoloads/AudioManager.gd"
 SaveManager="*res://autoloads/SaveManager.gd"
 NetworkManager="*res://autoloads/NetworkManager.gd"
 CommentaryManager="*res://autoloads/CommentaryManager.gd"
+TournamentManager="*res://autoloads/TournamentManager.gd"
 
 [display]
 

@@ -11,14 +11,17 @@ var _const: Node = null
 var _failures: Array[String] = []
 var _results: Array[String] = []
 
-# Match plan: [label, format, max_overs, fast_forward, full_mode]
+# Match plan: [label, format, max_overs, fast_forward, human_team_offset, human_bowls]
+# human_team_offset: -1 = pure AI match; 0 = teams[i] is the human side; 1 = teams[i+1] is human.
 var _matches: Array = [
-	["T20-A", 0, 3, false, false],
-	["T20-B", 0, 3, false, false],
-	["T20-C", 0, 3, false, false],
-	["ODI-A", 1, 5, false, false],
-	["T20-FF", 0, 3, true, false],
-	["FULL-A", 0, 2, false, true],
+	["T20-A", 0, 3, false, -1, false],
+	["T20-B", 0, 3, false, -1, false],
+	["T20-C", 0, 3, false, -1, false],
+	["ODI-A", 1, 5, false, -1, false],
+	["T20-FF", 0, 3, true, -1, false],
+	["FULL-A", 0, 2, false, 0, true],
+	["TOSS-H1", 0, 2, false, 1, true],   # human side is team B -> bats 2nd, bowls 1st
+	["TOSS-H2", 0, 2, false, 0, false],  # human side is team A, no bowling -> bats 1st only
 ]
 var _match_index: int = 0
 var _running: bool = false
@@ -34,6 +37,8 @@ var _cur_full: bool = false
 var _shot_requests: int = 0
 var _bowl_requests: int = 0
 var _drs_requests: int = 0
+var _shots_inn1: int = 0
+var _bowls_inn1: int = 0
 
 func _initialize() -> void:
 	_engine = root.get_node("MatchEngine")
@@ -50,10 +55,14 @@ func _initialize() -> void:
 
 func _on_request_shot(_name: String) -> void:
 	_shot_requests += 1
+	if _gm.state.get("is_first_innings", true):
+		_shots_inn1 += 1
 	_engine.receive_shot_input(randi_range(0, 5))
 
 func _on_request_bowl() -> void:
 	_bowl_requests += 1
+	if _gm.state.get("is_first_innings", true):
+		_bowls_inn1 += 1
 	# Index 0 is always a valid delivery for any bowler type.
 	_engine.receive_bowl_input(0)
 
@@ -62,6 +71,11 @@ func _on_request_drs(_wtype: String, _left: int) -> void:
 	_engine.receive_drs_input(randi_range(0, 1) == 0)
 
 func _on_frame() -> void:
+	if _tournament_phase:
+		if _tour_advance:
+			_tour_advance = false
+			_play_next_tour_fixture(root.get_node("TournamentManager"))
+		return
 	if not _running and _match_index < _matches.size():
 		_start_match(_matches[_match_index])
 
@@ -76,22 +90,26 @@ func _start_match(spec: Array) -> void:
 	_shot_requests = 0
 	_bowl_requests = 0
 	_drs_requests = 0
+	_shots_inn1 = 0
+	_bowls_inn1 = 0
 	var label: String = spec[0]
 	var format: int = spec[1]
 	var max_overs: int = spec[2]
 	var ff: bool = spec[3]
-	var full: bool = spec[4]
+	var human_off: int = spec[4]
+	var human_bowls: bool = spec[5]
 	_cur_format = format
-	_cur_full = full
+	_cur_full = human_off >= 0
 	_engine.fast_forward = ff
 	var teams = _gm.all_teams
-	# Full Match: human bats the 1st innings (we auto-respond), AI bowls it;
-	# then the human bowls the 2nd innings (is_human_bowling = full_mode).
-	_engine.start_match(
-		teams[_match_index % teams.size()],
-		teams[(_match_index + 1) % teams.size()],
-		format, full, false, full
-	)
+	var team_a = teams[_match_index % teams.size()]
+	var team_b = teams[(_match_index + 1) % teams.size()]
+	var human_team = null
+	if human_off == 0:
+		human_team = team_a
+	elif human_off == 1:
+		human_team = team_b
+	_engine.start_match(team_a, team_b, format, human_team, human_bowls)
 	_gm.state["max_overs"] = max_overs
 	# Simulate a HUD that connects one frame late — exercises the pending-start handshake.
 	await process_frame
@@ -113,6 +131,8 @@ func _on_ball_result(outcome: Dictionary) -> void:
 			_reviewable_wickets += 1
 
 func _on_match_ended(winner: String) -> void:
+	if _tournament_phase:
+		return  # Tournament matches are handled by _on_tour_match_ended
 	_running = false
 	_match_index += 1
 	var spec: Array = _matches[_match_index - 1]
@@ -174,13 +194,32 @@ func _on_match_ended(winner: String) -> void:
 	if reviews_now < 0 or reviews_now > max_reviews:
 		_failures.append("%s: DRS reviews out of bounds (now %d, max %d)" % [label, reviews_now, max_reviews])
 
-	# 8. Full Match: both human roles must have been exercised
-	#    (bat the 1st innings, bowl the 2nd innings)
+	# 8. Human-role specs: verify the derived roles match the human's team
+	#    (which innings saw shot vs bowl requests).
 	if _cur_full:
-		if _shot_requests < 3:
-			_failures.append("%s: expected >=3 shot requests (1st innings), got %d" % [label, _shot_requests])
-		if _bowl_requests < 3:
-			_failures.append("%s: expected >=3 bowl requests (2nd innings), got %d" % [label, _bowl_requests])
+		var label8 := label
+		if label8 == "FULL-A":
+			# Human = team A: shots in the 1st innings, bowls in the 2nd
+			if _shots_inn1 < 3:
+				_failures.append("%s: expected >=3 shots in 1st innings, got %d" % [label8, _shots_inn1])
+			if _bowls_inn1 != 0:
+				_failures.append("%s: bowl requests in 1st innings but human bats first" % label8)
+			if _bowl_requests - _bowls_inn1 < 3:
+				_failures.append("%s: expected >=3 bowls in 2nd innings, got %d" % [label8, _bowl_requests - _bowls_inn1])
+		elif label8 == "TOSS-H1":
+			# Human = team B: bowls in the 1st innings, bats in the 2nd
+			if _bowls_inn1 < 3:
+				_failures.append("%s: expected >=3 bowls in 1st innings, got %d" % [label8, _bowls_inn1])
+			if _shots_inn1 != 0:
+				_failures.append("%s: shot requests in 1st innings but human bats second" % label8)
+			if _shot_requests - _shots_inn1 < 3:
+				_failures.append("%s: expected >=3 shots in 2nd innings, got %d" % [label8, _shot_requests - _shots_inn1])
+		elif label8 == "TOSS-H2":
+			# Human = team A, no bowling: shots in the 1st innings only
+			if _shots_inn1 < 3:
+				_failures.append("%s: expected >=3 shots in 1st innings, got %d" % [label8, _shots_inn1])
+			if _bowl_requests != 0:
+				_failures.append("%s: bowl requests but human plays no bowling (%d)" % [label8, _bowl_requests])
 
 	_engine.fast_forward = false
 
@@ -194,8 +233,147 @@ func _on_match_ended(winner: String) -> void:
 		]
 	)
 
-	if _match_index >= _matches.size():
-		_finish()
+	if _match_index >= _matches.size() and not _tournament_phase:
+		_begin_tournament_phase()
+
+# ─── Tournament unit test: full auto-sim World Cup ───
+var _tournament_phase: bool = false
+var _tour_fixtures: Array = []
+var _tour_idx: int = 0
+var _tour_kind: String = "group"
+var _tour_advance: bool = false
+
+func _begin_tournament_phase() -> void:
+	_tournament_phase = true
+	var tm = root.get_node("TournamentManager")
+	var gm = root.get_node("GameManager")
+	_engine.fast_forward = true
+	# AI-vs-AI tournament: every fixture auto-sims at 1 over per innings.
+	tm.start_new_tournament(gm.all_teams[0])
+	_tour_fixtures = tm.fixtures.duplicate(true)
+	_tour_idx = 0
+	_tour_kind = "group"
+	_engine.match_ended_signal.connect(_on_tour_match_ended)
+	print("[tour] tournament phase begun: %d group fixtures" % _tour_fixtures.size())
+	_tour_advance = true
+
+# Plays the next tournament fixture (called from _on_frame, never re-entrant).
+func _play_next_tour_fixture(tm: Node) -> void:
+	var gm = root.get_node("GameManager")
+	if _tour_kind == "group":
+		if _tour_idx < _tour_fixtures.size():
+			var f = _tour_fixtures[_tour_idx]
+			var home = tm.team_by_name(f["home"])
+			var away = tm.team_by_name(f["away"])
+			_engine.start_match(home, away, 0, null, true)
+			gm.state["max_overs"] = 1
+		else:
+			if not tm.group_stage_complete():
+				_failures.append("tour: group stage not complete after all fixtures")
+			tm.advance_stage()
+			if tm.stage != tm.Stage.SEMIS:
+				_failures.append("tour: stage did not advance to SEMIS (got %d)" % tm.stage)
+			if tm.semis.size() != 2:
+				_failures.append("tour: expected 2 semis, got %d" % tm.semis.size())
+			_tour_kind = "semi"
+			_tour_idx = 0
+			_tour_advance = true
+			return
+	elif _tour_kind == "semi":
+		if _tour_idx < tm.semis.size():
+			var s = tm.semis[_tour_idx]
+			var home = tm.team_by_name(s["home"])
+			var away = tm.team_by_name(s["away"])
+			_engine.start_match(home, away, 0, null, true)
+			gm.state["max_overs"] = 1
+		else:
+			for s in tm.semis:
+				if not s["done"]:
+					_failures.append("tour: semi not done: %s" % [s])
+			tm.advance_stage()
+			if tm.stage != tm.Stage.FINAL:
+				_failures.append("tour: stage did not advance to FINAL (got %d)" % tm.stage)
+			_tour_kind = "final"
+			_tour_advance = true
+			return
+	elif _tour_kind == "final":
+		if not tm.final_match.get("done", false):
+			var home = tm.team_by_name(tm.final_match["home"])
+			var away = tm.team_by_name(tm.final_match["away"])
+			_engine.start_match(home, away, 0, null, true)
+			gm.state["max_overs"] = 1
+		else:
+			tm.advance_stage()
+			if tm.stage != tm.Stage.DONE:
+				_failures.append("tour: did not reach DONE (got %d)" % tm.stage)
+			if tm.champion == "":
+				_failures.append("tour: no champion crowned")
+			# Save/load round-trip check
+			var before_groups: Array = tm.groups.map(func(g): return g.map(func(t): return t.team_name))
+			var before_points: Dictionary = {}
+			for t in gm.all_teams:
+				before_points[t.team_name] = t.points
+			tm.load_saved()
+			var after_groups: Array = tm.groups.map(func(g): return g.map(func(t): return t.team_name))
+			if before_groups != after_groups:
+				_failures.append("tour: save/load groups mismatch")
+			for t in gm.all_teams:
+				if before_points[t.team_name] != t.points:
+					_failures.append("tour: save/load points mismatch for %s" % t.team_name)
+			var played_total := 0
+			for t in gm.all_teams:
+				played_total += t.matches_played
+			if played_total < 24:  # 12 group games = 24 team-appearances
+				_failures.append("tour: too few matches recorded (%d team-appearances)" % played_total)
+			print("[tour] champion: %s | team-appearances: %d" % [tm.champion, played_total])
+			_tour_kind = "done"
+			_engine.fast_forward = false
+			tm.abandon()
+			_engine.match_ended_signal.disconnect(_on_tour_match_ended)
+			_finish()
+			return
+	return  # waiting for the current fixture's match_ended signal
+
+func _overs_float(state: Dictionary) -> float:
+	# Overs as float: completed overs + balls/6
+	return float(state.get("current_over", 0)) + float(state.get("current_ball", 0)) / 6.0
+
+# Records a finished tournament fixture; the next one is started by _on_frame.
+func _on_tour_match_ended(winner: String) -> void:
+	if not _tournament_phase:
+		return
+	var tm = root.get_node("TournamentManager")
+	var gm = root.get_node("GameManager")
+	var first = gm.first_innings_scorecard
+	if _tour_kind == "group":
+		var f = _tour_fixtures[_tour_idx]
+		if winner != f["home"] and winner != f["away"]:
+			_failures.append("tour: winner %s not one of the fixture teams" % winner)
+		tm.record_result(f["home"], f["away"], winner, {
+			"winner_runs": gm.state.get("total_runs", 0),
+			"winner_overs": _overs_float(gm.state),
+			"loser_runs": first.get("total_runs", 0),
+			"loser_overs": _overs_from_string(first.get("total_overs", "0.0")),
+		})
+		_tour_idx += 1
+	elif _tour_kind == "semi":
+		var s = tm.semis[_tour_idx]
+		if winner != s["home"] and winner != s["away"]:
+			_failures.append("tour: semi winner %s invalid" % winner)
+		tm.record_knockout("semi%d" % _tour_idx, s["home"], s["away"], winner)
+		_tour_idx += 1
+	elif _tour_kind == "final":
+		tm.record_knockout("final", tm.final_match["home"], tm.final_match["away"], winner)
+	_tour_advance = true
+
+func _overs_from_string(s: String) -> float:
+	var parts = s.split(".")
+	if parts.size() == 2:
+		return float(parts[0]) + float(parts[1]) / 6.0
+	return 0.0
+
+func _finish_tournament() -> void:
+	_finish()
 
 # ─── Direct DRS unit checks ───
 func _test_drs_directly() -> void:
@@ -233,7 +411,7 @@ func _finish() -> void:
 	for line in _results:
 		print(line)
 	if _failures.is_empty():
-		print("ALL CHECKS PASSED (%d matches + DRS unit)" % _matches.size())
+		print("ALL CHECKS PASSED (%d matches + DRS unit + full tournament)" % _matches.size())
 		quit(0)
 	else:
 		print("FAILURES (%d):" % _failures.size())

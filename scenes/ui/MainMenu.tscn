@@ -81,9 +81,8 @@ text = "🏏  Quick Match"
 [node name="BtnTournament" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)
 layout_mode = 2
-disabled = true
-text = "🏆  Tournament (coming soon)"
-tooltip_text = "Planned for a future update"
+text = "🏆  Tournament"
+tooltip_text = "World Cup style tournament: 2 groups, semis, final"
 
 [node name="BtnMultiplayer" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)

@@ -50,6 +50,10 @@ static func _create_india() -> TeamData:
 		_p("Praveen Kumar", 30, 85, "DEFENSIVE", "FAST", 55),
 		_p("Suresh Yadav", 20, 88, "DEFENSIVE", "FAST", 60),
 		_p("Manoj Mishra", 15, 82, "DEFENSIVE", "MEDIUM", 50),
+		_p("Abhishek Rawat", 70, 15, "BALANCED", "NONE", 75),
+		_p("Nikhil Verma", 62, 30, "BALANCED", "MEDIUM", 70),
+		_p("Yash Chauhan", 40, 74, "DEFENSIVE", "SPIN", 60),
+		_p("Gopal Nair", 25, 79, "DEFENSIVE", "MEDIUM", 55),
 	]
 	return _team("India", "IND", Color("#0033A0"), players)
 
@@ -69,6 +73,10 @@ static func _create_australia() -> TeamData:
 		_p("Nathan Slade", 25, 86, "DEFENSIVE", "FAST", 55),
 		_p("Josh Blackwell", 20, 84, "DEFENSIVE", "MEDIUM", 50),
 		_p("Adam Warne", 35, 80, "DEFENSIVE", "SPIN", 65),
+		_p("Liam Kowalski", 68, 12, "AGGRESSIVE", "NONE", 72),
+		_p("Owen Bradman", 60, 35, "BALANCED", "MEDIUM", 68),
+		_p("Finn Hollins", 38, 76, "DEFENSIVE", "SPIN", 58),
+		_p("Riley Merrick", 22, 81, "DEFENSIVE", "FAST", 52),
 	]
 	return _team("Australia", "AUS", Color("#FFCD00"), players)
 
@@ -88,6 +96,10 @@ static func _create_england() -> TeamData:
 		_p("Mark Wood-Hall", 20, 88, "DEFENSIVE", "FAST", 50),
 		_p("Jofra Wellington", 15, 90, "DEFENSIVE", "FAST", 55),
 		_p("Adil Sheikh", 30, 82, "DEFENSIVE", "SPIN", 60),
+		_p("Tom Prescott", 66, 10, "AGGRESSIVE", "NONE", 70),
+		_p("Will Kimpton", 58, 32, "BALANCED", "MEDIUM", 75),
+		_p("Ethan Marlow", 36, 77, "DEFENSIVE", "SPIN", 62),
+		_p("Josh Trenton", 24, 80, "DEFENSIVE", "FAST", 55),
 	]
 	return _team("England", "ENG", Color("#CF081F"), players)
 
@@ -107,6 +119,10 @@ static func _create_south_africa() -> TeamData:
 		_p("Anrich Viljoen", 20, 86, "DEFENSIVE", "FAST", 50),
 		_p("Lungi De Bruyn", 15, 84, "DEFENSIVE", "FAST", 60),
 		_p("Keshav Pillay", 30, 82, "DEFENSIVE", "SPIN", 65),
+		_p("Dewald Bekker", 64, 14, "AGGRESSIVE", "NONE", 72),
+		_p("Pieter Kruger", 56, 34, "BALANCED", "MEDIUM", 70),
+		_p("Sizwe Dlamini", 34, 75, "DEFENSIVE", "SPIN", 66),
+		_p("Ruan Fourie", 23, 82, "DEFENSIVE", "FAST", 50),
 	]
 	return _team("South Africa", "RSA", Color("#007A4D"), players)
 
@@ -126,6 +142,10 @@ static func _create_new_zealand() -> TeamData:
 		_p("Trent Milne", 20, 90, "DEFENSIVE", "FAST", 60),
 		_p("Kyle Ferguson", 15, 85, "DEFENSIVE", "FAST", 50),
 		_p("Ish Patel", 30, 80, "DEFENSIVE", "SPIN", 65),
+		_p("Reece Tolbert", 66, 12, "BALANCED", "NONE", 74),
+		_p("Hemi Watene", 57, 33, "BALANCED", "MEDIUM", 71),
+		_p("Callum Donnelly", 35, 76, "DEFENSIVE", "SPIN", 63),
+		_p("Tane Robinson", 22, 81, "DEFENSIVE", "FAST", 54),
 	]
 	return _team("New Zealand", "NZL", Color("#000000"), players)
 
@@ -145,6 +165,10 @@ static func _create_pakistan() -> TeamData:
 		_p("Haris Rauf-Ali", 15, 88, "DEFENSIVE", "FAST", 55),
 		_p("Naseem Waqar", 10, 86, "DEFENSIVE", "FAST", 45),
 		_p("Abrar Bashir", 25, 80, "DEFENSIVE", "SPIN", 60),
+		_p("Saim Farooq", 67, 12, "AGGRESSIVE", "NONE", 70),
+		_p("Usman Ghani", 59, 30, "BALANCED", "MEDIUM", 68),
+		_p("Zafar Iqbal", 37, 77, "DEFENSIVE", "SPIN", 60),
+		_p("Wahab Tariq", 21, 83, "DEFENSIVE", "FAST", 48),
 	]
 	return _team("Pakistan", "PAK", Color("#006600"), players)
 
@@ -164,6 +188,10 @@ static func _create_west_indies() -> TeamData:
 		_p("Akeal Grant", 30, 80, "DEFENSIVE", "SPIN", 60),
 		_p("Obed Pierre", 15, 85, "DEFENSIVE", "FAST", 50),
 		_p("Gudakesh Persaud", 25, 78, "DEFENSIVE", "SPIN", 65),
+		_p("Javel Josephs", 65, 12, "AGGRESSIVE", "NONE", 70),
+		_p("Daron Blackwood", 58, 32, "BALANCED", "MEDIUM", 68),
+		_p("Kirk Alphonso", 36, 74, "DEFENSIVE", "SPIN", 62),
+		_p("Shamar Benn", 22, 80, "DEFENSIVE", "FAST", 52),
 	]
 	return _team("West Indies", "WI", Color("#7B0041"), players)
 
@@ -183,5 +211,9 @@ static func _create_sri_lanka() -> TeamData:
 		_p("Dushmantha Bandara", 20, 86, "DEFENSIVE", "FAST", 55),
 		_p("Kasun Kumara", 15, 84, "DEFENSIVE", "FAST", 50),
 		_p("Maheesh de Zoysa", 25, 80, "DEFENSIVE", "MEDIUM", 60),
+		_p("Avishka Mendons", 66, 12, "BALANCED", "NONE", 72),
+		_p("Ravindu Silva", 58, 30, "BALANCED", "MEDIUM", 70),
+		_p("Sahan Wickrama", 36, 76, "DEFENSIVE", "SPIN", 63),
+		_p("Dilshan Perera", 22, 81, "DEFENSIVE", "FAST", 53),
 	]
 	return _team("Sri Lanka", "SL", Color("#0000FF"), players)

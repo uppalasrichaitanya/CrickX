@@ -92,10 +92,42 @@ func _build_scorecard() -> void:
 	
 	# First innings scorecard (if second innings)
 	if GameManager.first_innings_scorecard.size() > 0 and winner != "":
+		var fi = GameManager.first_innings_scorecard
 		_add_separator()
 		_add_separator()
-		_add_header("FIRST INNINGS — " + GameManager.first_innings_scorecard.get("team_name", ""))
-		_add_text("Total: " + str(GameManager.first_innings_scorecard.get("total_runs", 0)) + "/" + str(GameManager.first_innings_scorecard.get("total_wickets", 0)))
+		_add_header("FIRST INNINGS — " + fi.get("team_name", ""))
+		
+		# Batting table
+		_add_row("Batsman", "Dismissal", "R", "B", "4s", "6s", "SR", true)
+		for b in fi.get("batsmen", []):
+			var dismissal = b.get("dismissal", "")
+			if not b.get("is_out", false) and b.get("balls", 0) > 0:
+				dismissal = "not out"
+			elif not b.get("is_out", false):
+				dismissal = "DNB"
+			_add_row(
+				b.get("name", ""), dismissal,
+				str(b.get("runs", 0)), str(b.get("balls", 0)),
+				str(b.get("fours", 0)), str(b.get("sixes", 0)),
+				str(snapped(b.get("sr", 0.0), 0.1)), false
+			)
+		var fx = fi.get("extras", {})
+		_add_text("Extras: " + str(fx.get("wides", 0) + fx.get("no_balls", 0) + fx.get("byes", 0)) +
+			" (w:" + str(fx.get("wides", 0)) + " nb:" + str(fx.get("no_balls", 0)) + ")")
+		_add_text("Total: " + str(fi.get("total_runs", 0)) + "/" + str(fi.get("total_wickets", 0)) + " (" + str(fi.get("total_overs", "0.0")) + " ov)")
+		
+		# Bowling table
+		var fi_bowlers = fi.get("bowlers", [])
+		if fi_bowlers.size() > 0:
+			_add_separator()
+			_add_row("Bowler", "", "O", "M", "R", "W", "Eco", true)
+			for b in fi_bowlers:
+				_add_row(
+					b.get("name", ""), "",
+					str(b.get("overs", 0)), str(b.get("maidens", 0)),
+					str(b.get("runs", 0)), str(b.get("wickets", 0)),
+					str(snapped(b.get("economy", 0.0), 0.01)), false
+				)
 
 func _add_header(text: String) -> void:
 	var lbl = Label.new()
@@ -145,8 +177,8 @@ func _on_continue() -> void:
 	
 	var winner = GameManager.get_meta("match_winner") if GameManager.has_meta("match_winner") else ""
 	if winner != "":
-		# Match over, go to main menu
-		get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
+		# Match over: go wherever the current mode wants (menu or tournament hub)
+		get_tree().change_scene_to_file(GameManager.return_scene)
 	else:
 		# Innings break, return to HUD for second innings
 		get_tree().change_scene_to_file("res://scenes/ui/MatchHUD.tscn")

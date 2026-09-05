@@ -21,6 +21,7 @@
 - **High-Quality UI**: A cohesive dark UI using Accent Green and Accent Gold, complete with match HUD, team selection, and full scorecards for both innings.
 - **Risk & Reward Batting**: Choose from various shot types (Defensive Block, Leave, Drive/Pull, Loft/Slog) with realistic risk profiles and boundary chances.
 - **Visual Match View**: A live top-down field renders every delivery and result — yorkers and bouncers, boundary ropes with chasing fielders, sixes sailing over the top, stump shatterings, dropped catches, plus a toggleable wagon wheel and milestone fireworks.
+- **Tournament Mode**: World Cup style — 2 groups of 4, a live points table with Net Run Rate tie-breaks, semi finals and a final. Play your team's fixtures (with a real coin toss — win it and choose to bat or bowl), and auto-sim the rest. Tournaments autosave and can be resumed. Squads of 15 per team.
 - **Fast Forward**: Collapse the waits between balls to auto-sim quickly at any time.
 - **Realistic Squads**: Fully fleshed-out T20 squads (8 international teams) with individual player stats for batting, bowling, fielding, and styles.
 
@@ -66,11 +67,12 @@ The game's architecture heavily utilizes the **Autoload pattern** to manage stat
 7. In Full Match mode, pick each delivery (keys 1-4) as you bowl the second innings.
 8. Watch the **field view** react to every ball — boundaries race to the rope, sixes clear it, and wickets shatter the stumps. Toggle **🧭** for the wagon wheel of every shot so far.
 9. Use **⏩** in the status bar to fast-forward at any time.
-10. Manage your pressure, observe the pitch/weather conditions, and lead your team to victory!
+10. For a campaign, start a **Tournament** from the main menu: pick your nation, win the toss, and chase the cup through groups, semis, and the final — the standings, NRR, and fixtures are tracked for you.
+11. Manage your pressure, observe the pitch/weather conditions, and lead your team to victory!
 
 ## 🧪 Testing
 
-A headless smoke test plays six full matches through the real engine and checks invariants (scorecard accounting, bowler figures, DRS bounds, wide rates, mode wiring):
+A headless smoke test plays eight full matches through the real engine (T20/ODI, fast-forward, both toss orientations, human bowling) and runs a complete auto-simulated tournament with a save/load round-trip, plus DRS unit checks:
 
 ```bash
 Godot_v4.2.2-stable_win64_console.exe --headless --path . -s res://tests/smoke_test.gd

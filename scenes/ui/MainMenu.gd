@@ -57,7 +57,9 @@ func _on_quick_match() -> void:
 	_fade_to_scene("res://scenes/ui/TeamSelect.tscn")
 
 func _on_tournament() -> void:
-	pass  # Planned: tournament mode (see implementation_plan.md Phase 4)
+	# Resume a saved tournament if one exists, else start fresh via the hub
+	# (the hub shows a team picker when no tournament is active).
+	_fade_to_scene("res://scenes/ui/TournamentHub.tscn")
 
 func _on_multiplayer() -> void:
 	pass  # Planned: LAN multiplayer (see implementation_plan.md Phase 5)

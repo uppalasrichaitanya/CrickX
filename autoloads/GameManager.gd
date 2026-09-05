@@ -42,6 +42,7 @@ var difficulty: int = Constants.Difficulty.MEDIUM
 var master_volume: float = 1.0
 var sfx_volume: float = 1.0
 var is_fullscreen: bool = false
+var return_scene: String = "res://scenes/ui/MainMenu.tscn"  # Where Scorecard's Continue goes
 
 # ─── Deep Logic State ───
 var weather: int = Constants.WeatherType.SUNNY
