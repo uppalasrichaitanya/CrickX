@@ -57,10 +57,10 @@ func _on_quick_match() -> void:
 	_fade_to_scene("res://scenes/ui/TeamSelect.tscn")
 
 func _on_tournament() -> void:
-	pass  # Phase 4
+	pass  # Planned: tournament mode (see implementation_plan.md Phase 4)
 
 func _on_multiplayer() -> void:
-	pass  # Phase 5
+	pass  # Planned: LAN multiplayer (see implementation_plan.md Phase 5)
 
 func _on_settings() -> void:
 	_fade_to_scene("res://scenes/ui/Settings.tscn")
