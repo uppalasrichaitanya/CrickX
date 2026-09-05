@@ -71,6 +71,10 @@ func _get_pool(event: String, ctx: Dictionary) -> Array[String]:
 			return _WEATHER_LINES
 		"DRS":
 			return _DRS_LINES
+		"DRS_NOT_OUT":
+			return _DRS_NOT_OUT_LINES
+		"DRS_LOST":
+			return _DRS_LOST_LINES
 		"DROPPED_CATCH":
 			return _DROPPED_LINES
 		"MAIDEN":
@@ -513,6 +517,21 @@ var _DRS_LINES: Array[String] = [
 	"Review taken! Who will the technology favor?",
 	"DRS initiated! The big screen lights up!",
 	"Time to check with the third umpire!",
+]
+
+var _DRS_NOT_OUT_LINES: Array[String] = [
+	"HE'S NOT OUT! The review brings the decision back!",
+	"OVERTURNED! A huge reprieve for the batting side!",
+	"Not out! The technology sides with the batsman!",
+	"Great work from the captain — review won!",
+	"OVERTURNED! The stumps were missed, that's for sure!",
+]
+
+var _DRS_LOST_LINES: Array[String] = [
+	"Review lost... the decision stands.",
+	"Upheld! The review didn't save him.",
+	"Decision stands after the review. Review lost.",
+	"No luck with the third umpire — review lost.",
 ]
 
 var _DROPPED_LINES: Array[String] = [

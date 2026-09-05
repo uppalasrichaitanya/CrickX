@@ -39,12 +39,33 @@ var commentary_tween: Tween = null
 @onready var delivery_alert := $DeliveryAlert
 @onready var lbl_delivery_name := $DeliveryAlert/DeliveryName
 
+# ─── Bowl Selection ───
+@onready var bowl_panel := $BowlSelectionPanel
+@onready var bowl_timer_bar := $BowlSelectionPanel/BowlVBox/TimerBar
+@onready var btn_bowl_1 := $BowlSelectionPanel/BowlVBox/Grid/BtnBowl1
+@onready var btn_bowl_2 := $BowlSelectionPanel/BowlVBox/Grid/BtnBowl2
+@onready var btn_bowl_3 := $BowlSelectionPanel/BowlVBox/Grid/BtnBowl3
+@onready var btn_bowl_4 := $BowlSelectionPanel/BowlVBox/Grid/BtnBowl4
+
+# ─── DRS Review Popup ───
+@onready var drs_popup := $DRSPopup
+@onready var lbl_drs_info := $DRSPopup/DRSPanel/DRSVBox/DRSInfo
+@onready var drs_timer_bar := $DRSPopup/DRSPanel/DRSVBox/DRSTimer
+@onready var btn_drs_yes := $DRSPopup/DRSPanel/DRSVBox/DRSBtns/DRSYesBtn
+@onready var btn_drs_no := $DRSPopup/DRSPanel/DRSVBox/DRSBtns/DRSNoBtn
+
 # ─── Status indicators ───
 @onready var lbl_weather := $StatusBar/Weather
 @onready var lbl_pitch := $StatusBar/Pitch
 @onready var lbl_pressure := $StatusBar/Pressure
 @onready var lbl_momentum := $StatusBar/Momentum
 @onready var lbl_drs := $StatusBar/DRS
+@onready var btn_ff := $StatusBar/FFBtn
+@onready var btn_wagon := $StatusBar/WagonBtn
+
+# ─── Field View ───
+var field_view: FieldView = null
+var _partnership_milestone_shown: int = 0
 
 # ─── Over Summary Popup ───
 @onready var over_summary_popup := $OverSummaryPopup
@@ -55,7 +76,13 @@ var commentary_tween: Tween = null
 @onready var lbl_innings_break := $InningsBreakPopup/BreakContent
 
 var selection_timer: Timer = null
+var bowl_timer: Timer = null
+var drs_timer: Timer = null
 var is_waiting_for_input: bool = false
+var is_waiting_for_bowl: bool = false
+var bowl_options: Array[int] = []
+var _weather_pitch := WeatherPitchSystem.new()
+const DRS_REVIEW_WINDOW: float = 5.0
 
 func _ready() -> void:
 	modulate.a = 0.0
@@ -65,6 +92,8 @@ func _ready() -> void:
 	# Connect signals from MatchEngine
 	MatchEngine.ball_result_ready.connect(_on_ball_result)
 	MatchEngine.request_shot_selection.connect(_show_shot_selection)
+	MatchEngine.request_bowl_selection.connect(_show_bowl_selection)
+	MatchEngine.request_drs_review.connect(_show_drs_review)
 	MatchEngine.delivery_incoming.connect(_show_delivery_alert)
 	MatchEngine.over_ended.connect(_on_over_ended)
 	MatchEngine.innings_ended_signal.connect(_on_innings_ended)
@@ -95,29 +124,86 @@ func _ready() -> void:
 	btn_shot_5.tooltip_text = "Defensive block. Safe shot, survive the delivery."
 	btn_shot_6.tooltip_text = "Leave the ball. Safe if outside off, risky if on stumps."
 	
-	# Selection timer (4 seconds to react)
+	# Selection timer (time to react, from Constants)
 	selection_timer = Timer.new()
-	selection_timer.wait_time = 4.0
+	selection_timer.wait_time = Constants.SHOT_SELECTION_TIMEOUT
 	selection_timer.one_shot = true
 	selection_timer.timeout.connect(_on_selection_timeout)
 	add_child(selection_timer)
 	
+	# Bowl selection timer (same window as shots)
+	bowl_timer = Timer.new()
+	bowl_timer.wait_time = Constants.SHOT_SELECTION_TIMEOUT
+	bowl_timer.one_shot = true
+	bowl_timer.timeout.connect(_on_bowl_timeout)
+	add_child(bowl_timer)
+	
+	# DRS review window timer
+	drs_timer = Timer.new()
+	drs_timer.wait_time = DRS_REVIEW_WINDOW
+	drs_timer.one_shot = true
+	drs_timer.timeout.connect(_on_drs_timeout)
+	add_child(drs_timer)
+	
+	# Bowl buttons (delivery list depends on bowler type — set when panel shows)
+	btn_bowl_1.pressed.connect(func(): _select_bowl(0))
+	btn_bowl_2.pressed.connect(func(): _select_bowl(1))
+	btn_bowl_3.pressed.connect(func(): _select_bowl(2))
+	btn_bowl_4.pressed.connect(func(): _select_bowl(3))
+	
+	# DRS buttons
+	btn_drs_yes.pressed.connect(func(): _select_drs(true))
+	btn_drs_no.pressed.connect(func(): _select_drs(false))
+	
+	# Fast-forward toggle
+	btn_ff.toggled.connect(_on_ff_toggled)
+	
+	# Wagon wheel toggle
+	btn_wagon.toggled.connect(func(pressed: bool) -> void:
+		if field_view:
+			field_view.toggle_wagon(pressed))
+	
+	# Field view (visual match rendering in the center band)
+	var fv_scene = load("res://scenes/match/FieldView.tscn")
+	field_view = fv_scene.instantiate()
+	field_view.position = Vector2(140, 332)
+	add_child(field_view)
+	MatchEngine.delivery_thrown.connect(func(del: int) -> void: field_view.play_delivery(del))
+	MatchEngine.ball_result_ready.connect(func(o: Dictionary) -> void: _on_field_outcome(o))
+	MatchEngine.second_innings_starting.connect(_on_second_innings_for_field)
+	# A wicket ends the current partnership — reset its milestone tracker
+	GameManager.wicket_fallen.connect(func(_p, _w: String) -> void:
+		_partnership_milestone_shown = 0)
+	
 	shot_panel.visible = false
+	bowl_panel.visible = false
 	over_summary_popup.visible = false
 	delivery_alert.visible = false
 	innings_break_popup.visible = false
+	drs_popup.visible = false
 	
 	_update_display()
+	
+	# Tell the engine our signal handlers are connected before it starts ball flow.
+	MatchEngine.note_hud_ready()
+
+func _exit_tree() -> void:
+	if is_instance_valid(MatchEngine):
+		MatchEngine.note_hud_gone()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not is_waiting_for_input:
-		return
-	if event.is_action_pressed("shot_1"): _select_shot(Constants.ShotType.AGGRESSIVE_DRIVE)
-	elif event.is_action_pressed("shot_2"): _select_shot(Constants.ShotType.PULL_SHOT)
-	elif event.is_action_pressed("shot_3"): _select_shot(Constants.ShotType.SWEEP_SHOT)
-	elif event.is_action_pressed("shot_4"): _select_shot(Constants.ShotType.LOFT_SLOG)
-	elif event.is_action_pressed("shot_5"): _select_shot(Constants.ShotType.DEFENSIVE_BLOCK)
-	elif event.is_action_pressed("shot_6"): _select_shot(Constants.ShotType.LEAVE_BALL)
+	if is_waiting_for_input:
+		if event.is_action_pressed("shot_1"): _select_shot(Constants.ShotType.AGGRESSIVE_DRIVE)
+		elif event.is_action_pressed("shot_2"): _select_shot(Constants.ShotType.PULL_SHOT)
+		elif event.is_action_pressed("shot_3"): _select_shot(Constants.ShotType.SWEEP_SHOT)
+		elif event.is_action_pressed("shot_4"): _select_shot(Constants.ShotType.LOFT_SLOG)
+		elif event.is_action_pressed("shot_5"): _select_shot(Constants.ShotType.DEFENSIVE_BLOCK)
+		elif event.is_action_pressed("shot_6"): _select_shot(Constants.ShotType.LEAVE_BALL)
+	elif is_waiting_for_bowl:
+		for i in range(4):
+			if i < bowl_options.size() and event.is_action_pressed("shot_%d" % (i + 1)):
+				_select_bowl(i)
+				break
 
 func _show_delivery_alert(delivery_name: String) -> void:
 	# Flash the delivery type on screen
@@ -137,9 +223,9 @@ func _show_shot_selection(delivery_name: String) -> void:
 	
 	timer_bar.value = 100.0
 	selection_timer.start()
-	# Animate timer bar (4 seconds)
+	# Animate timer bar (matches Constants.SHOT_SELECTION_TIMEOUT)
 	var tw = create_tween()
-	tw.tween_property(timer_bar, "value", 0.0, 4.0)
+	tw.tween_property(timer_bar, "value", 0.0, Constants.SHOT_SELECTION_TIMEOUT)
 
 func _select_shot(shot: int) -> void:
 	if not is_waiting_for_input:
@@ -148,11 +234,117 @@ func _select_shot(shot: int) -> void:
 	shot_panel.visible = false
 	delivery_alert.visible = false
 	selection_timer.stop()
+	AudioManager.play_click()
 	MatchEngine.receive_shot_input(shot)
 
 func _on_selection_timeout() -> void:
 	# Auto-select defensive block if timeout — you froze!
 	_select_shot(Constants.ShotType.DEFENSIVE_BLOCK)
+
+# ═══════════════════════════════════════
+# BOWL SELECTION (Full Match — 2nd innings)
+# ═══════════════════════════════════════
+func _show_bowl_selection() -> void:
+	is_waiting_for_bowl = true
+	bowl_panel.visible = true
+	delivery_alert.visible = false
+	bowl_options = _bowl_options_for(GameManager.current_bowler)
+	for i in range(4):
+		var btn = [btn_bowl_1, btn_bowl_2, btn_bowl_3, btn_bowl_4][i]
+		if i < bowl_options.size():
+			btn.visible = true
+			btn.text = _bowl_label(bowl_options[i], i)
+		else:
+			btn.visible = false
+	bowl_timer_bar.value = 100.0
+	var tw = create_tween()
+	tw.tween_property(bowl_timer_bar, "value", 0.0, Constants.SHOT_SELECTION_TIMEOUT)
+	bowl_timer.start()
+
+func _select_bowl(idx: int) -> void:
+	if not is_waiting_for_bowl or idx >= bowl_options.size():
+		return
+	is_waiting_for_bowl = false
+	bowl_panel.visible = false
+	bowl_timer.stop()
+	AudioManager.play_click()
+	MatchEngine.receive_bowl_input(bowl_options[idx])
+
+func _on_bowl_timeout() -> void:
+	# Hesitated — random delivery it is.
+	_select_bowl(_rng_i(0, bowl_options.size() - 1))
+
+func _bowl_options_for(bowler: PlayerData) -> Array[int]:
+	if bowler.bowling_type == "SPIN":
+		return [Constants.DeliveryType.OFF_SPIN, Constants.DeliveryType.LEG_SPIN, Constants.DeliveryType.SLOWER]
+	return [Constants.DeliveryType.YORKER, Constants.DeliveryType.BOUNCER, Constants.DeliveryType.FULL_TOSS, Constants.DeliveryType.SLOWER]
+
+func _bowl_label(delivery: int, idx: int) -> String:
+	match delivery:
+		Constants.DeliveryType.YORKER: return "🎯 [%d] Yorker" % (idx + 1)
+		Constants.DeliveryType.BOUNCER: return "⚡ [%d] Short Ball" % (idx + 1)
+		Constants.DeliveryType.FULL_TOSS: return "🎈 [%d] Full Toss" % (idx + 1)
+		Constants.DeliveryType.OFF_SPIN: return "🌀 [%d] Off Spin" % (idx + 1)
+		Constants.DeliveryType.LEG_SPIN: return "🌀 [%d] Leg Break" % (idx + 1)
+		Constants.DeliveryType.SLOWER: return "🐢 [%d] Slower Ball" % (idx + 1)
+		_: return "[%d] Delivery" % (idx + 1)
+
+# ═══════════════════════════════════════
+# DRS REVIEW
+# ═══════════════════════════════════════
+func _show_drs_review(wtype: String, reviews_left: int) -> void:
+	lbl_drs_info.text = "%s — %d review%s left" % [wtype, reviews_left, "" if reviews_left == 1 else "s"]
+	drs_popup.visible = true
+	drs_timer_bar.value = 100.0
+	var tw = create_tween()
+	tw.tween_property(drs_timer_bar, "value", 0.0, DRS_REVIEW_WINDOW)
+	drs_timer.start()
+
+func _select_drs(should_review: bool) -> void:
+	if not drs_popup.visible:
+		return
+	drs_popup.visible = false
+	drs_timer.stop()
+	AudioManager.play_click()
+	MatchEngine.receive_drs_input(should_review)
+
+func _on_drs_timeout() -> void:
+	# Hesitated too long — no review.
+	_select_drs(false)
+
+# ═══════════════════════════════════════
+# FAST FORWARD
+# ═══════════════════════════════════════
+func _on_ff_toggled(pressed: bool) -> void:
+	MatchEngine.fast_forward = pressed
+	btn_ff.text = "▶️" if pressed else "⏩"
+
+# Route a resolved ball to the field view + milestone fireworks.
+func _on_field_outcome(outcome: Dictionary) -> void:
+	if field_view == null:
+		return
+	field_view.play_outcome(outcome)
+	
+	# Milestone fireworks: batsman 50/100, bowler fifer, hat-trick
+	var milestone = outcome.get("milestone", "")
+	if milestone == "FIFTY" or milestone == "HUNDRED":
+		field_view.play_fireworks()
+	if outcome.get("bowl_milestone", "") == "FIFER":
+		field_view.play_fireworks()
+	if outcome.get("hat_trick_completed", false):
+		field_view.play_fireworks()
+	
+	# Partnership 50 / 100 (once per partnership)
+	var p_runs = GameManager.get_partnership_runs()
+	if p_runs >= 100 and _partnership_milestone_shown < 100:
+		_partnership_milestone_shown = 100
+		field_view.play_fireworks()
+	elif p_runs >= 50 and _partnership_milestone_shown < 50:
+		_partnership_milestone_shown = 50
+		field_view.play_fireworks()
+
+func _rng_i(a: int, b: int) -> int:
+	return randi_range(a, b)
 
 func _on_ball_result(outcome: Dictionary) -> void:
 	_update_display()
@@ -201,11 +393,11 @@ func _update_display() -> void:
 	lbl_partnership.text = "Partnership: " + str(GameManager.get_partnership_runs())
 	
 	# Status bar
-	var ws = WeatherPitchSystem.new()
-	lbl_weather.text = "☁️ " + ws.get_weather_name(GameManager.weather)
-	lbl_pitch.text = "🏟️ " + ws.get_pitch_name(GameManager.pitch_type)
+	lbl_weather.text = "☁️ " + _weather_pitch.get_weather_name(GameManager.weather)
+	lbl_pitch.text = "🏟️ " + _weather_pitch.get_pitch_name(GameManager.pitch_type)
 	lbl_pressure.text = "📊 Pressure: " + str(snapped(GameManager.batting_pressure * 100, 1)) + "%"
-	lbl_drs.text = "DRS: " + "🟢".repeat(GameManager.drs_reviews_batting) + "🔴".repeat(maxi(0, (2 if GameManager.state.get("format", 0) == Constants.MatchFormat.ODI else 1) - GameManager.drs_reviews_batting))
+	var max_reviews = GameManager.get_max_reviews()
+	lbl_drs.text = "DRS: " + "🟢".repeat(GameManager.drs_reviews_batting) + "🔴".repeat(maxi(0, max_reviews - GameManager.drs_reviews_batting))
 	
 	# Momentum bar
 	var mom = GameManager.momentum
@@ -251,6 +443,32 @@ func _show_commentary(outcome: Dictionary) -> void:
 		ctx["wicket_type"] = outcome.get("wicket_type", "BOWLED")
 	var text = CommentaryManager.get_commentary(key, ctx)
 	
+	# Dropped catch flavor — name the culprit
+	if key == "DROPPED_CATCH":
+		var culprit = outcome.get("dropped_by", "")
+		if culprit != "":
+			text = "DROPPED by " + culprit + "! " + text
+	# Boundary zone flavor ("raced away through the covers")
+	if key == "FOUR" and outcome.has("zone"):
+		var zname = Constants.ZONE_NAMES.get(outcome["zone"], "")
+		if zname != "":
+			text += " Raced away through " + zname + "!"
+	
+	# DRS review outcomes
+	if key == "DRS_NOT_OUT":
+		if outcome.get("drs_commentary", "") != "":
+			text += "\n" + outcome.get("drs_commentary", "")
+	elif key == "WICKET" and outcome.get("drs_reviewed", false):
+		text += "\n" + CommentaryManager.get_commentary("DRS_LOST")
+	
+	# Dismissal display text ("c Fielder b Bowler")
+	if key == "WICKET" and outcome.get("dismissal_display", "") != "":
+		text += "\n(" + outcome.get("dismissal_display", "") + ")"
+	
+	# Hat-trick completed!
+	if outcome.get("hat_trick_completed", false):
+		text += "\n🏆 " + CommentaryManager.get_commentary("HAT_TRICK_BALL")
+	
 	# Add delivery and shot info
 	var del_name = outcome.get("delivery_name", "")
 	var shot_name = outcome.get("shot_name", "")
@@ -279,8 +497,10 @@ func _show_commentary(outcome: Dictionary) -> void:
 	# Color coding
 	if key == "WICKET":
 		commentary_label.add_theme_color_override("font_color", Constants.COLOR_WICKET_RED)
-	elif key in ["FOUR", "SIX"]:
+	elif key in ["FOUR", "SIX", "DRS_NOT_OUT"]:
 		commentary_label.add_theme_color_override("font_color", Constants.COLOR_ACCENT_GREEN)
+	elif key == "DROPPED_CATCH":
+		commentary_label.add_theme_color_override("font_color", Constants.COLOR_ACCENT_GOLD)
 	else:
 		commentary_label.add_theme_color_override("font_color", Constants.COLOR_TEXT_PRIMARY)
 	
@@ -302,19 +522,39 @@ func _on_over_ended(summary: Dictionary) -> void:
 	var text = "END OF OVER " + str(summary.get("over_number", 0))
 	text += "\n" + summary.get("bowler", "") + ": " + str(summary.get("runs", 0)) + " runs, " + str(summary.get("wickets", 0)) + " wickets"
 	text += "\nEconomy: " + str(snapped(summary.get("economy", 0.0), 0.01))
-	lbl_over_summary.text = text
 	
-	await get_tree().create_timer(2.0).timeout
+	# Over event flavor
+	for ev in summary.get("events", []):
+		match ev:
+			"MAIDEN":
+				text += "\n🎯 " + CommentaryManager.get_commentary("MAIDEN")
+			"BIG_OVER":
+				text += "\n💥 " + CommentaryManager.get_commentary("CROWD_SIX")
+			"WEATHER_CHANGE":
+				text += "\n" + CommentaryManager.get_commentary("WEATHER_CHANGE") + " (Now: " + _weather_pitch.get_weather_name(GameManager.weather) + ")"
+			"DRINKS_BREAK":
+				text += "\n🥤 Drinks break — players refresh."
+	lbl_over_summary.text = text
+	AudioManager.play_click()
+	
+	await get_tree().create_timer(0.3 if MatchEngine.fast_forward else 2.0).timeout
 	over_summary_popup.visible = false
 
 func _on_second_innings_starting() -> void:
 	# Show innings break overlay
 	innings_break_popup.visible = true
 	var target = GameManager.state.get("total_runs", 0) + 1
-	lbl_innings_break.text = "INNINGS BREAK\n\n" + GameManager.bowling_team.team_name + " need " + str(target) + " to win!\n\nAI batting in progress..."
+	var tail = "AI batting in progress..." if not MatchEngine.full_mode else "AI batting — you bowl!"
+	lbl_innings_break.text = "INNINGS BREAK\n\n" + GameManager.bowling_team.team_name + " need " + str(target) + " to win!\n\n" + tail
 	
-	await get_tree().create_timer(3.0).timeout
+	await get_tree().create_timer(0.5 if MatchEngine.fast_forward else 3.0).timeout
 	innings_break_popup.visible = false
+
+# Field-view side of the innings break: fresh wagon wheel + partnership tracker.
+func _on_second_innings_for_field() -> void:
+	if field_view:
+		field_view.clear_wagon()
+	_partnership_milestone_shown = 0
 
 func _on_innings_ended(scorecard: Dictionary) -> void:
 	# Don't transition away — MatchEngine handles the flow
