@@ -54,13 +54,20 @@ func choose_batting_shot(batsman: PlayerData, game_state: Dictionary) -> int:
 	var weights = [0.20, 0.15, 0.15, 0.10, 0.25, 0.15]
 	return _weighted_pick(weights)
 
-func choose_bowler(bowling_team: TeamData, game_state: Dictionary) -> PlayerData:
+func choose_bowler(bowling_team: TeamData, game_state: Dictionary, prev_bowler: PlayerData = null) -> PlayerData:
 	var bowlers = bowling_team.get_bowlers()
 	var max_overs = Constants.MAX_BOWLER_OVERS_T20 if game_state.get("format", 0) == Constants.MatchFormat.T20 else Constants.MAX_BOWLER_OVERS_ODI
 	var available: Array[PlayerData] = []
 	for b in bowlers:
 		if b.match_overs_bowled < float(max_overs):
-			available.append(b)
+			# Can't bowl consecutive overs
+			if prev_bowler == null or b != prev_bowler:
+				available.append(b)
+	# If everyone eligible just bowled the last over, allow the freshest arm
+	if available.is_empty() and prev_bowler != null:
+		for b in bowlers:
+			if b.match_overs_bowled < float(max_overs):
+				available.append(b)
 	if available.is_empty():
 		return bowlers[0]
 	return available[_rng.randi_range(0, available.size() - 1)]

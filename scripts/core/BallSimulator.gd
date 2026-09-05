@@ -20,7 +20,8 @@ func _ready() -> void:
 	ai_controller.set_difficulty(GameManager.difficulty)
 
 func simulate_ball(batsman: PlayerData, bowler: PlayerData,
-		shot_type: int, delivery_type: int, game_state: Dictionary) -> Dictionary:
+		shot_type: int, delivery_type: int, game_state: Dictionary,
+		fielding_team: TeamData = null) -> Dictionary:
 	# 1. Weather & Pitch modifiers
 	var weather_mods = weather_pitch.update(game_state)
 	
@@ -48,7 +49,8 @@ func simulate_ball(batsman: PlayerData, bowler: PlayerData,
 	var prev_runs = batsman.match_runs
 	var prev_wickets = bowler.match_wickets
 	var outcome = _resolve_outcome(batsman, bowler, shot_type, delivery_type,
-		matchup, timing_mods, weather_mods, accuracy, swing, variation, read_spin, pressure, game_state)
+		matchup, timing_mods, weather_mods, accuracy, swing, variation,
+		read_spin, pressure, game_state, fielding_team)
 	
 	# 8. Update form & fatigue
 	form_fatigue.update_batsman(batsman, outcome, game_state)
@@ -123,17 +125,22 @@ func _resolve_outcome(batsman: PlayerData, bowler: PlayerData,
 		matchup: Dictionary, timing_mods: Dictionary,
 		weather_mods: Dictionary, accuracy: Dictionary,
 		swing: Dictionary, variation: Dictionary,
-		read_spin: bool, pressure: float, game_state: Dictionary) -> Dictionary:
-	
+		read_spin: bool, pressure: float, game_state: Dictionary,
+		fielding_team: TeamData = null) -> Dictionary:
+
 	# Check for wide first
 	if accuracy.get("is_wide", false):
 		return { "runs": 1, "is_wicket": false, "is_wide": true, "is_no_ball": false,
 			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type, "commentary_key": "WIDE" }
-	
-	# No ball check (small chance)
-	if _rng.randf() < 0.03:
+
+	# No ball chance scales with the bowler's inaccuracy (elite ~0.5%, wild ~10%)
+	var no_ball_chance = clampf(
+		Constants.NO_BALL_BASE * (1.0 + (1.0 - float(accuracy.get("accuracy", 0.8))) * 6.0),
+		0.002, Constants.NO_BALL_MAX)
+	if _rng.randf() < no_ball_chance:
 		return { "runs": 1, "is_wicket": false, "is_wide": false, "is_no_ball": true,
-			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type, "commentary_key": "NO_BALL" }
+			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type,
+			"commentary_key": "NO_BALL", "zone": batting_depth.get_shot_zone(shot_type) }
 	
 	# ── Get shot risk profile ──
 	var profile = _get_shot_profile(shot_type)
@@ -142,11 +149,12 @@ func _resolve_outcome(batsman: PlayerData, bowler: PlayerData,
 	if shot_type == Constants.ShotType.LEAVE_BALL:
 		# Only bowled if yorker/stumps delivery AND bad luck
 		if delivery_type == Constants.DeliveryType.YORKER and _rng.randf() < 0.06:
-			return _wicket_outcome("BOWLED", shot_type, delivery_type)
+			return _wicket_outcome("BOWLED", shot_type, delivery_type, bowler)
 		if delivery_type == Constants.DeliveryType.OFF_SPIN and _rng.randf() < 0.03:
-			return _wicket_outcome("LBW", shot_type, delivery_type)
+			return _wicket_outcome("LBW", shot_type, delivery_type, bowler)
 		return { "runs": 0, "is_wicket": false, "is_wide": false, "is_no_ball": false,
-			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type, "commentary_key": "DOT" }
+			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type,
+			"commentary_key": "DOT", "zone": Constants.FieldZone.FINE_LEG }
 	
 	# Calculate probabilities
 	var bat_eff = batsman.get_effective_batting_skill()
@@ -208,29 +216,41 @@ func _resolve_outcome(batsman: PlayerData, bowler: PlayerData,
 	# ── ROLL ──
 	var roll = _rng.randf()
 	var accum = 0.0
-	
+
 	accum += wicket_chance
 	if roll < accum:
 		var wtype = _determine_wicket_type(delivery_type, shot_type)
-		return _wicket_outcome(wtype, shot_type, delivery_type)
-	
+		# Caught chances are contested by a real fielder — can be dropped.
+		if wtype in ["CAUGHT", "CAUGHT_BEHIND"]:
+			var fielded = _resolve_catch(wtype, batsman, bowler, shot_type, delivery_type, fielding_team)
+			if not fielded.is_empty():
+				return fielded
+			# Dropped! Safe runs instead — costly miss.
+			return { "runs": 1, "is_wicket": false, "is_wide": false, "is_no_ball": false,
+				"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type,
+				"commentary_key": "DROPPED_CATCH", "dropped_by": _last_fielder_name }
+		return _wicket_outcome(wtype, shot_type, delivery_type, bowler)
+
 	# Sixes (40% of boundary for aggressive, 0% for defensive)
 	var six_ratio = 0.4 if shot_type != Constants.ShotType.DEFENSIVE_BLOCK else 0.0
 	accum += boundary_chance * six_ratio
 	if roll < accum and profile["run_cap"] >= 6:
 		return { "runs": 6, "is_wicket": false, "is_wide": false, "is_no_ball": false,
-			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type, "commentary_key": "SIX" }
-	
+			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type,
+			"commentary_key": "SIX", "zone": batting_depth.get_shot_zone(shot_type) }
+
 	# Fours
 	accum += boundary_chance * (1.0 - six_ratio)
 	if roll < accum and profile["run_cap"] >= 4:
 		return { "runs": 4, "is_wicket": false, "is_wide": false, "is_no_ball": false,
-			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type, "commentary_key": "FOUR" }
+			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type,
+			"commentary_key": "FOUR", "zone": batting_depth.get_shot_zone(shot_type) }
 	
 	accum += dot_chance
 	if roll < accum:
 		return { "runs": 0, "is_wicket": false, "is_wide": false, "is_no_ball": false,
-			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type, "commentary_key": "DOT" }
+			"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type,
+			"commentary_key": "DOT", "zone": batting_depth.get_shot_zone(shot_type) }
 	
 	# Remaining = 1, 2, or 3 runs (capped by shot profile)
 	var run_roll = _rng.randf()
@@ -245,7 +265,8 @@ func _resolve_outcome(batsman: PlayerData, bowler: PlayerData,
 	var key = "SINGLE" if runs_scored == 1 else ("TWO" if runs_scored == 2 else "THREE")
 	
 	return { "runs": runs_scored, "is_wicket": false, "is_wide": false, "is_no_ball": false,
-		"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type, "commentary_key": key }
+		"wicket_type": "", "shot_type": shot_type, "delivery_type": delivery_type,
+		"commentary_key": key, "zone": batting_depth.get_shot_zone(shot_type) }
 
 func _determine_wicket_type(delivery: int, shot: int) -> String:
 	var roll = _rng.randf()
@@ -267,6 +288,62 @@ func _determine_wicket_type(delivery: int, shot: int) -> String:
 	elif roll < 0.88: return "CAUGHT_BEHIND"
 	else: return "RUN_OUT"
 
-func _wicket_outcome(wtype: String, shot: int, delivery: int) -> Dictionary:
+var _last_fielder_name: String = ""
+
+# Resolves a "caught" dismissal against a real fielder from the bowling XI.
+# Returns a wicket outcome Dictionary if the catch is held; an EMPTY Dictionary
+# means dropped (the caller converts it into safe runs).
+func _resolve_catch(wtype: String, batsman: PlayerData, bowler: PlayerData,
+		shot: int, delivery: int, fielding_team: TeamData) -> Dictionary:
+	# Pick a fielder (exclude the bowler — he already did his job)
+	var fielder: PlayerData = null
+	if fielding_team != null and fielding_team.playing_xi.size() > 1:
+		var candidates: Array[PlayerData] = []
+		for p in fielding_team.playing_xi:
+			if p != bowler:
+				candidates.append(p)
+		if candidates.size() > 0:
+			fielder = candidates[_rng.randi_range(0, candidates.size() - 1)]
+
+	# Catch probability from the fielder's skill (and the take has to be clean)
+	var hold_chance = Constants.CATCH_BASE_CHANCE
+	if fielder != null:
+		hold_chance += (float(fielder.fielding_skill) - 60.0) * Constants.CATCH_SKILL_WEIGHT
+		_last_fielder_name = fielder.player_name
+	else:
+		_last_fielder_name = ""
+	hold_chance = clampf(hold_chance, 0.45, 0.97) * Constants.CARRY_BASE_CHANCE
+
+	if _rng.randf() >= hold_chance:
+		# Dropped!
+		if fielder != null:
+			pressure_morale.update_morale(fielder, "DROPPED_CATCH")
+		return {}
+
+	# Held — credit the catch and build the dismissal text.
+	var display := ""
+	if fielder != null:
+		fielder.match_catches += 1
+		pressure_morale.update_morale(fielder, "DIVING_CATCH")
+		var prefix := "st" if wtype == "STUMPED" else "c"
+		display = prefix + " " + fielder.player_name + " b "
+	else:
+		display = "b "
+	var o = _wicket_outcome(wtype, shot, delivery)
+	o["fielder_name"] = fielder.player_name if fielder != null else ""
+	o["dismissal_display"] = display + bowler.player_name
+	return o
+
+func _wicket_outcome(wtype: String, shot: int, delivery: int, bowler: PlayerData = null) -> Dictionary:
+	var display := wtype
+	if bowler != null:
+		match wtype:
+			"BOWLED": display = "b " + bowler.player_name
+			"LBW": display = "lbw b " + bowler.player_name
+			"RUN_OUT": display = "run out"
+			"STUMPED": display = "st b " + bowler.player_name
+			_: display = wtype
 	return { "runs": 0, "is_wicket": true, "is_wide": false, "is_no_ball": false,
-		"wicket_type": wtype, "shot_type": shot, "delivery_type": delivery, "commentary_key": "WICKET" }
+		"wicket_type": wtype, "shot_type": shot, "delivery_type": delivery,
+		"commentary_key": "WICKET", "dismissal_display": display,
+		"zone": batting_depth.get_shot_zone(shot) }
