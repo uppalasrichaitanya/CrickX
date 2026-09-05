@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot 4.2.2 (headless Linux)
+        run: |
+          curl -sL -o godot.zip https://github.com/godotengine/godot/releases/download/4.2.2-stable/Godot_v4.2.2-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mv Godot_v4.2.2-stable_linux.x86_64 godot
+          chmod +x godot
+
+      - name: Import project (editor pass — surfaces script/parse errors)
+        run: ./godot --headless --editor --path . --quit || true
+
+      - name: Run headless smoke test (6 full matches + DRS unit checks)
+        run: ./godot --headless --path . -s res://tests/smoke_test.gd

@@ -17,12 +17,13 @@ This document serves as the structural memory and history of the CrickX project 
 
 ## 2. Global Autoloads (Singletons)
 The game relies heavily on the Autoload pattern to manage state across scenes.
-1. **`GameManager.gd`**: Holds global match state (`total_runs`, `wickets`, `current_over`, `deliveries`), active teams, currently active striker/non-striker/bowler, momentum, pitch wear, weather. Handles strike rotation and next batsman generation.
+1. **`GameManager.gd`**: Holds global match state (`total_runs`, `wickets`, `current_over`), active teams, currently active striker/non-striker/bowler, momentum, pitch wear, weather. Handles strike rotation, next batsman generation, and partnership tracking.
 2. **`MatchEngine.gd`**: The State Machine driving the match loop.
    - *Flow:* Bowler picks delivery -> Wait 0.6s -> Reveal Delivery -> Player has 4s to select shot (Reaction timer) -> Simulator resolves outcome -> Wait -> Next Ball.
-3. **`AudioManager.gd`**: Handles playback of SFX (`bat_hit`, `crowd_cheer`, `wicket`, `ui_click`).
+   - *Also:* DRS review flow (5s window on reviewable dismissals), Full Match mode (human bowls the 2nd innings), fast-forward mode, hat-trick ledger, and a match-generation token that prevents zombie coroutines from old matches.
+3. **`AudioManager.gd`**: Handles playback of SFX (`bat_hit`, `crowd_cheer`, `wicket`, `ui_click`, ambient crowd loop). Sounds are synthesized placeholders — regenerate with `tools/gen_audio.ps1`.
 4. **`CommentaryManager.gd`**: Dynamic text generation based on outcomes, milestones, context, and close finishes.
-5. **`NavigationManager.gd`**: Handles scene transitions cleanly.
+5. **`SaveManager.gd` / `NetworkManager.gd`**: Stub autoloads reserved for tournament mode and LAN multiplayer (planned — see `implementation_plan.md`).
 
 ---
 
@@ -54,18 +55,20 @@ The game resolves balls using a sequential pipeline executed by `BallSimulator.g
 All UI scenes are built strictly using Godot `Control` nodes with `theme_override_` properties (avoiding `LabelSettings` resources to prevent parse errors).
 Theme is a cohesive dark UI using `Color(0.08, 0.09, 0.11)` for backgrounds, Accent Green (`#00C853`) and Accent Gold (`#FFD54F`).
 
-1. **`MainMenu.tscn`**: VBox container with title, Play Quick Match, Settings, Quit buttons.
-2. **`TeamSelect.tscn`**: OptionButtons to select Team A and Team B, plus format (T20/ODI).
+1. **`MainMenu.tscn`**: VBox container with title, Play Quick Match, Settings, Quit. Tournament/Multiplayer are visible but disabled ("coming soon").
+2. **`TeamSelect.tscn`**: ItemLists to select Team A and Team B, plus a SetupRow with Format (T20/ODI) and Mode (Bat vs AI / Full Match) OptionButtons, and a same-team warning label.
 3. **`MatchHUD.tscn`**: 
-   - *TopBar*: Teams, score, format badge, overs.
+   - *TopBar*: Teams, score, format badge, overs, target info.
    - *CenterPanel*: `CenterVBox` holding BattingBox (Striker, Non-striker with Form icons), BowlingBox (Bowler with Rhythm icons), and InfoBox (CRR, RRR, Partnership).
-   - *ShotSelectionPanel*: Anchored to the lower half. Contains a TimerBar and a 3-column Grid of 6 emoji-labeled shot buttons.
-   - *DeliveryAlert*: Pops up in center screen.
+   - *ShotSelectionPanel*: Anchored to the lower half. Contains a TimerBar and a 3-column Grid of 6 emoji-labeled shot buttons (keys 1-6).
+   - *BowlSelectionPanel*: Mirrors the shot panel; shown when the human bowls (Full Match 2nd innings). Buttons are filtered by bowler type (spin vs pace).
+   - *DRSPopup*: Full-screen dim overlay with review info, a 5s timer bar, and Review / No Review buttons.
+   - *DeliveryAlert*: Pops up in center screen (also announces hat-trick balls).
    - *InningsBreakPopup*: Full-screen overlay triggered at 1st innings end.
-   - *OverSummaryPopup*: Appears cleanly after 6 balls.
-   - *StatusBar*: Pitch, Weather, Pressure%, Momentum, DRS indicators.
-4. **`Scorecard.tscn`**: Final screen showing the total breakdown and winner.
-5. **`Settings.tscn`**: Volume and difficulty controls.
+   - *OverSummaryPopup*: Appears cleanly after 6 balls; includes maiden / big over / weather / drinks flavor.
+   - *StatusBar*: Pitch, Weather, Pressure%, Momentum, live DRS pips, and the Fast-Forward toggle.
+4. **`Scorecard.tscn`**: Final screen showing winner, Man of the Match, full batting/bowling tables for the second innings, and the complete first-innings tables.
+5. **`Settings.tscn`**: Volume, difficulty, and fullscreen controls (persisted to `user://settings.cfg`).
 
 ---
 
@@ -74,16 +77,33 @@ Defined in `Constants.gd` and Resources (`PlayerData.gd`, `TeamData.gd`).
 - **`Constants.gd`**: Holds enums for `ShotType`, `DeliveryType`, `WeatherType`, `PitchType`. Holds Hex Color codes. Holds the large `MATCHUP_MATRIX` determining base probabilities of Bowler vs Batsman matchups.
 - **`PlayerData.gd`**: Stats (Batting skill, Bowling skill, bowling style - Fast/Spin). Match tracking (match_runs, match_balls, match_wickets).
 - **`TeamData.gd`**: Squad (array of PlayerData), team name, color, tournament logic points.
-- **`TeamDatabase.gd`**: Static hardcoded database. Currently holds fully fleshed-out "India" and "Australia" T20 squads with realistic 11s.
+- **`TeamDatabase.gd`**: Static hardcoded database holding 8 international squads (India, Australia, England, South Africa, New Zealand, Pakistan, West Indies, Sri Lanka) with realistic XIs.
 
 ---
 
 ## 6. Significant Fixes & Design Decisions Today
-- **Godot Parse Errors**: Replaced broken `.tres` sub-resources for LabelSettings with inline `theme_override` styling across all 5 `.tscn` files. This allows raw textual merging without breaking Godot's scene parser.
+- **Godot Parse Errors**: Replaced broken `.tres` sub-resources for LabelSettings with inline `theme_override` styling across all `.tscn` files. This allows raw textual merging without breaking Godot's scene parser.
 - **UI Node Overlap**: Reanchored `MatchHUD.tscn`. The shot grid and timer bar were collapsing inside a pure PanelContainer. Wrapped them in a `VBoxContainer` to stack correctly. Moved Shot UI to the bottom area of the screen.
 - **Match Loop Syncing**: Added `await get_tree().create_timer()` yields across `MatchEngine.gd` to completely fix race conditions where signals fired before HUDs or Scorecards finished loading.
 - **Second Innings**: Refactored `MatchEngine.gd` so `swap_innings()` triggers an `InningsBreakPopup` on the *same HUD* and starts auto-simulating the AI chase, rather than crashing or transitioning blindly to the Scorecard.
 - **Risk System Rewrite**: Found that `BallSimulator` was indiscriminately applying high wicket chances (12-15%) to defensive blocks due to fatigue/pressure loops. Substituted this with a `shot_profile` multiplier (block = `wicket_scale: 0.15`).
+- **HUD-Ready Handshake** (P0): `MatchHUD` reports `note_hud_ready()`/`note_hud_gone()` so the engine never starts ball flow into a HUD that isn't listening (previously a 0.8s race).
+- **Match Generation Token** (P2): `MatchEngine.start_match()` bumps `_match_gen`; every suspended ball-flow coroutine aborts on resume if its generation is stale. This killed a zombie-coroutine overlap where a previous match's loop kept bowling into a new match's state.
+- **Fielding** (P2): Caught dismissals are contested by a real fielder (catch chance from `fielding_skill`), with drops, morale events, `match_catches` tracking, and "c Fielder b Bowler" dismissal text.
+- **Accounting** (P2): Exact invariants — batter runs + penalties = team total, and every run is charged to a bowler (wides/no-ball penalties included; partial final overs credited at innings/match end).
+- **Regression Net**: `tests/smoke_test.gd` plays 6 full matches headlessly (T20/ODI, fast-forward, Full Match) plus a DRS unit loop; runs in GitHub Actions CI on every push.
+
+---
+
+## 7. Visual Match View (`scenes/match/FieldView.tscn`)
+- **`FieldView.gd`** (Node2D): top-down TV-style oval drawn entirely with `_draw()` — mown-stripe grass, boundary rope, 30-yard circle, pitch strip with creases and stumps. No image assets.
+- **Markers**: striker/non-striker (green), bowler (gold), keeper (blue), 9 outfield fielders (white), all as self-drawing `MarkerDot` Node2Ds placed via the `ZONE_ANGLES` mapping from `Constants.FieldZone`.
+- **Delivery animation**: `play_delivery(type)` — per-type trajectory timing (bouncer fast/kicks up, yorker full, spin drifts, slower ball loopy), driven by the engine's `delivery_thrown` signal fired before the shot resolves.
+- **Outcome animation**: `play_outcome(outcome)` — reads the real outcome dict: 4 (races to the rope with a chasing fielder + burst), 6 (over-the-top arc with scale/shadow + gold burst), 1-3 (fielder intercept + batsmen crossing), dot (soft push back), wide (past the keeper), DROPPED (bounces off the fielder), and all wicket types (BOWLED/STUMPED/RUN_OUT shatter the stumps via CPUParticles2D, CAUGHT tracks the fielder, CAUGHT_BEHIND to the keeper, LBW pad-impact flash). Dismissed batter marker fades off.
+- **Wagon wheel**: every scoring shot records a line from the striker's end to the zone's boundary point, colored by runs (1-3 green / 4 cyan / 6 gold). Toggled by the 🧭 button in the HUD StatusBar; cleared at the innings break.
+- **Milestone fireworks**: golden particle fanfares on FIFTY, HUNDRED, FIFER, hat-trick, and 50/100 partnerships (tracked in the HUD, reset per wicket).
+- **Pacing**: the engine gives boundary/wicket/drop/milestone balls a longer 1.4s beat (`_result_wait`) so animations breathe; ordinary balls keep 0.8s. All animation timings are scaled by `_speed_scale()` so fast-forward collapses them to 0.04s.
+- **Integration**: `MatchHUD` instantiates the FieldView at `Vector2(140, 332)` (the free band between the over dots and commentary), wires `delivery_thrown`/`ball_result_ready`/`second_innings_starting`, and the DeliveryAlert overlays it translucently.
 
 ---
 
