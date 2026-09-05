@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://match_hud"]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/MatchHUD.gd" id="1"]
 
@@ -168,6 +168,19 @@ text = "⚡ Even"
 layout_mode = 2
 text = "DRS: 🟢"
 
+[node name="FFBtn" type="Button" parent="StatusBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(44, 0)
+text = "⏩"
+tooltip_text = "Fast-forward: skip the wait between balls"
+
+[node name="WagonBtn" type="Button" parent="StatusBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(44, 0)
+toggle_mode = true
+text = "🧭"
+tooltip_text = "Wagon wheel: show every shot line this innings"
+
 [node name="OverDotsBar" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 10
@@ -252,6 +265,54 @@ text = "🛡️ [5] Block"
 custom_minimum_size = Vector2(180, 48)
 text = "✋ [6] Leave"
 
+[node name="BowlSelectionPanel" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchor_left = 0.05
+anchor_top = 0.48
+anchor_right = 0.95
+anchor_bottom = 0.85
+
+[node name="BowlVBox" type="VBoxContainer" parent="BowlSelectionPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="BowlSelectionPanel/BowlVBox"]
+layout_mode = 2
+text = "🎳 YOUR TURN — PICK A DELIVERY"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="TimerBar" type="ProgressBar" parent="BowlSelectionPanel/BowlVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 12)
+max_value = 100.0
+value = 100.0
+
+[node name="Grid" type="GridContainer" parent="BowlSelectionPanel/BowlVBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+columns = 4
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 8
+
+[node name="BtnBowl1" type="Button" parent="BowlSelectionPanel/BowlVBox/Grid"]
+custom_minimum_size = Vector2(220, 48)
+text = "🎯 [1] Yorker"
+
+[node name="BtnBowl2" type="Button" parent="BowlSelectionPanel/BowlVBox/Grid"]
+custom_minimum_size = Vector2(220, 48)
+text = "⚡ [2] Short Ball"
+
+[node name="BtnBowl3" type="Button" parent="BowlSelectionPanel/BowlVBox/Grid"]
+custom_minimum_size = Vector2(220, 48)
+text = "🎈 [3] Full Toss"
+
+[node name="BtnBowl4" type="Button" parent="BowlSelectionPanel/BowlVBox/Grid"]
+custom_minimum_size = Vector2(220, 48)
+text = "🐢 [4] Slower Ball"
+
 [node name="DeliveryAlert" type="PanelContainer" parent="."]
 visible = false
 layout_mode = 1
@@ -259,9 +320,10 @@ anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -170.0
-offset_top = 340.0
+offset_top = 330.0
 offset_right = 170.0
-offset_bottom = 380.0
+offset_bottom = 368.0
+self_modulate = Color(1, 1, 1, 0.88)
 
 [node name="DeliveryName" type="Label" parent="DeliveryAlert"]
 layout_mode = 2
@@ -304,4 +366,68 @@ text = "INNINGS BREAK"
 theme_override_colors/font_color = Color(1, 0.839, 0, 1)
 theme_override_font_sizes/font_size = 24
 autowrap_mode = 2
+
+[node name="DRSPopup" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="DRSDim" type="ColorRect" parent="DRSPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.72)
+
+[node name="DRSPanel" type="PanelContainer" parent="DRSPopup"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = -130.0
+offset_right = 260.0
+offset_bottom = 130.0
+
+[node name="DRSVBox" type="VBoxContainer" parent="DRSPopup/DRSPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DRSTitle" type="Label" parent="DRSPopup/DRSPanel/DRSVBox"]
+layout_mode = 2
+text = "📡 DRS — WICKET! REVIEW?"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0, 0.784, 0.325, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="DRSInfo" type="Label" parent="DRSPopup/DRSPanel/DRSVBox"]
+layout_mode = 2
+text = "LBW — 1 review left"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 15
+autowrap_mode = 2
+
+[node name="DRSTimer" type="ProgressBar" parent="DRSPopup/DRSPanel/DRSVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+max_value = 100.0
+value = 100.0
+
+[node name="DRSBtns" type="HBoxContainer" parent="DRSPopup/DRSPanel/DRSVBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="DRSYesBtn" type="Button" parent="DRSPopup/DRSPanel/DRSVBox/DRSBtns"]
+custom_minimum_size = Vector2(160, 50)
+text = "🙋 REVIEW"
+
+[node name="DRSNoBtn" type="Button" parent="DRSPopup/DRSPanel/DRSVBox/DRSBtns"]
+custom_minimum_size = Vector2(160, 50)
+text = "✋ NO REVIEW"
 

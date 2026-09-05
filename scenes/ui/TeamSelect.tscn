@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://team_select"]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/TeamSelect.gd" id="1"]
 
@@ -76,6 +76,52 @@ theme_override_font_sizes/font_size = 20
 [node name="TeamBList" type="ItemList" parent="HBoxContainer/TeamBPanel"]
 layout_mode = 2
 size_flags_vertical = 3
+
+[node name="SetupRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -260.0
+offset_top = -120.0
+offset_right = 260.0
+offset_bottom = -80.0
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="FormatLabel" type="Label" parent="SetupRow"]
+layout_mode = 2
+text = "Format"
+
+[node name="FormatBtn" type="OptionButton" parent="SetupRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(90, 0)
+
+[node name="ModeLabel" type="Label" parent="SetupRow"]
+layout_mode = 2
+text = "Mode"
+
+[node name="ModeBtn" type="OptionButton" parent="SetupRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(190, 0)
+
+[node name="WarningLabel" type="Label" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -145.0
+offset_right = 200.0
+offset_bottom = -120.0
+text = "Pick two different teams!"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.098, 0.267, 1)
 
 [node name="BtnStart" type="Button" parent="."]
 layout_mode = 1

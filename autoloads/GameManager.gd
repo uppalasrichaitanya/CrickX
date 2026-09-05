@@ -35,6 +35,7 @@ var extras: Dictionary = { "wides": 0, "no_balls": 0, "byes": 0, "leg_byes": 0 }
 
 # ─── Second innings tracking ───
 var first_innings_scorecard: Dictionary = {}
+var partnership_start_runs: int = 0  # Total runs at the start of the current partnership
 
 # ─── Settings ───
 var difficulty: int = Constants.Difficulty.MEDIUM
@@ -109,6 +110,7 @@ func start_new_match(team_a: TeamData, team_b: TeamData, format: int) -> void:
 	all_overs = []
 	extras = { "wides": 0, "no_balls": 0, "byes": 0, "leg_byes": 0 }
 	first_innings_scorecard = {}
+	partnership_start_runs = 0
 	pitch_wear = 0.0
 	batting_pressure = 0.0
 	momentum = 0.0
@@ -121,6 +123,11 @@ func start_new_match(team_a: TeamData, team_b: TeamData, format: int) -> void:
 
 func get_current_over_string() -> String:
 	return str(state["current_over"]) + "." + str(state["current_ball"])
+
+func get_max_reviews() -> int:
+	if state.get("format", 0) == Constants.MatchFormat.T20:
+		return Constants.DRS_REVIEWS_T20
+	return Constants.DRS_REVIEWS_ODI
 
 func get_required_run_rate() -> float:
 	if state["is_first_innings"] or state["target"] == 0:
@@ -140,8 +147,8 @@ func get_current_run_rate() -> float:
 func get_partnership_runs() -> int:
 	if striker == null or non_striker == null:
 		return 0
-	# Simple approximation — sum of both current batsmen runs since last wicket
-	return striker.match_runs + non_striker.match_runs
+	# Runs scored by the current pairing since the last wicket (or innings start)
+	return state["total_runs"] - partnership_start_runs
 
 func update_phase() -> void:
 	var overs = state["current_over"]
@@ -220,6 +227,7 @@ func swap_innings() -> void:
 	this_over_balls = []
 	all_overs = []
 	extras = { "wides": 0, "no_balls": 0, "byes": 0, "leg_byes": 0 }
+	partnership_start_runs = 0
 	pitch_wear = 0.0
 	batting_pressure = 0.0
 

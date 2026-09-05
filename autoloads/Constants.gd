@@ -18,7 +18,7 @@ const RECONNECT_TIMEOUT: float = 60.0
 const INPUT_TIMEOUT: float = 5.0
 
 # ─── UI Timing ───
-const SHOT_SELECTION_TIMEOUT: float = 8.0
+const SHOT_SELECTION_TIMEOUT: float = 4.0
 const SCENE_FADE_DURATION: float = 0.3
 const TYPEWRITER_SPEED: float = 0.03  # seconds per character
 const TURN_TRANSITION_DURATION: float = 3.0
@@ -38,13 +38,27 @@ const HIGH_MORALE_THRESHOLD: float = 0.75
 const LOW_MORALE_THRESHOLD: float = 0.4
 
 # ─── Pitch Wear ───
-const PITCH_WEAR_PER_BALL: float = 0.001
+const PITCH_WEAR_PER_BALL: float = 0.005
 const PITCH_ROUGH_THRESHOLD: float = 0.4
 const PITCH_DANGEROUS_THRESHOLD: float = 0.7
 
 # ─── DRS ───
 const DRS_REVIEWS_T20: int = 1
 const DRS_REVIEWS_ODI: int = 2
+
+# ─── Fielding & Dismissal ───
+const CATCH_BASE_CHANCE: float = 0.78      # skilled fielder holds on
+const CATCH_SKILL_WEIGHT: float = 0.004    # +/- per fielding skill point from 60
+const CARRY_BASE_CHANCE: float = 0.85      # chance a take is clean, not a bump ball
+const DROPPED_CATCH_SAVE: float = 0.25    # dropped chance on a misfield still costs runs
+const NO_BALL_BASE: float = 0.015         # base no-ball chance (skill 80, rhythm 0.5)
+const NO_BALL_MAX: float = 0.10            # cap for a wild bowler
+
+# ─── Over Events ───
+const BIG_OVER_RUNS: int = 12              # over qualifies as a "big over"
+const DRINKS_BREAK_OVER_ODI: int = 20      # drinks break cadence (ODI)
+const DRINKS_BREAK_OVER_T20: int = 10      # drinks break cadence (T20)
+const SPELL_REST_RECOVERY: float = 0.05    # fatigue recovered per over rested
 
 # ─── Theme Colors ───
 const COLOR_BG_DARK := Color("#0D1117")
@@ -147,4 +161,16 @@ var SHOT_ZONES: Dictionary = {
 	ShotType.LOFT_SLOG: [FieldZone.MID_ON, FieldZone.MID_OFF, FieldZone.LONG_ON],
 	ShotType.DEFENSIVE_BLOCK: [FieldZone.MID_OFF, FieldZone.MID_ON],
 	ShotType.LEAVE_BALL: [],
+}
+
+# Zone display names (for commentary flavor)
+var ZONE_NAMES: Dictionary = {
+	FieldZone.FINE_LEG: "fine leg",
+	FieldZone.SQUARE_LEG: "square leg",
+	FieldZone.MID_WICKET: "mid-wicket",
+	FieldZone.LONG_ON: "long-on",
+	FieldZone.MID_ON: "mid-on",
+	FieldZone.MID_OFF: "mid-off",
+	FieldZone.COVER: "the covers",
+	FieldZone.POINT: "point",
 }

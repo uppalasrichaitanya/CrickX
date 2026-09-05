@@ -57,7 +57,9 @@ func can_batsman_read_variation(batsman: PlayerData, variation: Dictionary) -> b
 func calculate_accuracy(bowler: PlayerData) -> Dictionary:
 	var accuracy = float(bowler.bowling_skill) / 100.0 * (0.7 + bowler.rhythm * 0.6)
 	var miss = (1.0 - accuracy) * _rng.randf_range(-1.0, 1.0)
-	return { "accuracy": accuracy, "miss_amount": miss, "is_wide": absf(miss) > 0.4 }
+	# Wide is a small explicit probability scaled by inaccuracy (elite ~0.5%, weak ~10%)
+	var wide_chance = clampf((1.0 - accuracy) * 0.15, 0.005, 0.10)
+	return { "accuracy": accuracy, "miss_amount": miss, "is_wide": _rng.randf() < wide_chance }
 
 func update_rhythm(bowler: PlayerData, outcome: Dictionary) -> void:
 	var runs = outcome.get("runs", 0)
