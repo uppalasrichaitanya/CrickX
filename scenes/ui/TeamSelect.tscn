@@ -135,6 +135,7 @@ offset_top = -65.0
 offset_right = 100.0
 offset_bottom = -15.0
 text = "🏏  Start Match"
+tooltip_text = "Continue to squad selection, then play"
 
 [node name="BtnBack" type="Button" parent="."]
 layout_mode = 1
@@ -143,3 +144,4 @@ offset_top = 20.0
 offset_right = 120.0
 offset_bottom = 55.0
 text = "← Back"
+tooltip_text = "Back to main menu"

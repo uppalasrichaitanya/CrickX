@@ -126,7 +126,8 @@ func _on_auto() -> void:
 	_refresh()
 
 func _on_back() -> void:
-	# No changes applied — return where we came from
+	# No changes applied - return where we came from
+	AudioManager.play_click()
 	_fade_to(return_scene)
 
 func _on_confirm() -> void:

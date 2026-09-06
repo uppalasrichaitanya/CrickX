@@ -58,6 +58,14 @@ size_flags_horizontal = 3
 min_value = 0.0
 max_value = 100.0
 value = 100.0
+tooltip_text = "Overall game volume"
+
+[node name="ValueLabel" type="Label" parent="PanelContainer/VBoxContainer/MasterVolume"]
+layout_mode = 2
+custom_minimum_size = Vector2(52, 0)
+text = "100%"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0, 0.784, 0.325, 1)
 
 [node name="SFXVolume" type="HBoxContainer" parent="PanelContainer/VBoxContainer"]
 layout_mode = 2
@@ -73,6 +81,14 @@ size_flags_horizontal = 3
 min_value = 0.0
 max_value = 100.0
 value = 100.0
+tooltip_text = "Sound effects volume"
+
+[node name="ValueLabel" type="Label" parent="PanelContainer/VBoxContainer/SFXVolume"]
+layout_mode = 2
+custom_minimum_size = Vector2(52, 0)
+text = "100%"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0, 0.784, 0.325, 1)
 
 [node name="Difficulty" type="HBoxContainer" parent="PanelContainer/VBoxContainer"]
 layout_mode = 2
@@ -100,3 +116,4 @@ layout_mode = 2
 [node name="BtnBack" type="Button" parent="PanelContainer/VBoxContainer"]
 custom_minimum_size = Vector2(200, 50)
 text = "← Back"
+tooltip_text = "Save settings and go back"

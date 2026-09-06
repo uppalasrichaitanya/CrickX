@@ -57,3 +57,4 @@ offset_top = -50.0
 offset_right = 80.0
 offset_bottom = -10.0
 text = "Continue →"
+tooltip_text = "Continue to the menu (or tournament hub)"

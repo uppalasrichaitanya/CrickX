@@ -80,16 +80,19 @@ alignment = 1
 custom_minimum_size = Vector2(150, 46)
 layout_mode = 2
 text = "Add →"
+tooltip_text = "Add the selected squad player to the XI"
 
 [node name="BtnRemove" type="Button" parent="HBox/BtnCol"]
 custom_minimum_size = Vector2(150, 46)
 layout_mode = 2
 text = "← Remove"
+tooltip_text = "Remove the selected player from the XI"
 
 [node name="BtnAuto" type="Button" parent="HBox/BtnCol"]
 custom_minimum_size = Vector2(150, 46)
 layout_mode = 2
 text = "Auto-Pick"
+tooltip_text = "Pick the strongest XI automatically"
 
 [node name="XIPanel" type="VBoxContainer" parent="HBox"]
 layout_mode = 2
@@ -124,6 +127,7 @@ alignment = 1
 custom_minimum_size = Vector2(130, 48)
 layout_mode = 2
 text = "← Back"
+tooltip_text = "Discard XI changes and go back"
 
 [node name="Warning" type="Label" parent="BottomBar"]
 layout_mode = 2
@@ -137,3 +141,4 @@ theme_override_font_sizes/font_size = 13
 custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
 text = "Confirm →"
+tooltip_text = "Lock in this XI and continue"

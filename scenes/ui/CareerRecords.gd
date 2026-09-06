@@ -76,6 +76,7 @@ func _on_reset() -> void:
 	AudioManager.play_click()
 
 func _on_back() -> void:
+	AudioManager.play_click()
 	var fade := create_tween()
 	fade.tween_property(self, "modulate:a", 0.0, Constants.SCENE_FADE_DURATION)
 	await fade.finished

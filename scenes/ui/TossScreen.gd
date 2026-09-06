@@ -12,6 +12,7 @@ extends Control
 @onready var choice_row := $ChoiceRow
 @onready var btn_bat := $ChoiceRow/BtnBat
 @onready var btn_bowl := $ChoiceRow/BtnBowl
+@onready var btn_back := $StartRow/BtnBack
 @onready var btn_start := $StartRow/BtnStart
 
 var home: TeamData = null
@@ -24,6 +25,10 @@ var toss_result := ""   # "HEADS" / "TAILS"
 var bats_first: TeamData = null
 
 func _ready() -> void:
+	modulate.a = 0.0
+	var fade := create_tween()
+	fade.tween_property(self, "modulate:a", 1.0, Constants.SCENE_FADE_DURATION)
+	
 	home = GameManager.get_meta("toss_home")
 	away = GameManager.get_meta("toss_away")
 	human = GameManager.get_meta("toss_human")
@@ -45,6 +50,7 @@ func _ready() -> void:
 	btn_tails.pressed.connect(func(): _make_call("TAILS"))
 	btn_bat.pressed.connect(_choose_bat)
 	btn_bowl.pressed.connect(_choose_bowl)
+	btn_back.pressed.connect(_on_back)
 	btn_start.pressed.connect(_start_match)
 	
 	choice_row.visible = false
@@ -98,6 +104,15 @@ func _choice_made() -> void:
 	btn_start.visible = true
 	btn_start.text = "▶ Start Match"
 	AudioManager.play_click()
+
+func _on_back() -> void:
+	# Toss is only reachable from the tournament flow — cancel back to the Hub.
+	# (Safe at any point: no match has started, nothing to clean up.)
+	AudioManager.play_click()
+	var fade := create_tween()
+	fade.tween_property(self, "modulate:a", 0.0, Constants.SCENE_FADE_DURATION)
+	await fade.finished
+	get_tree().change_scene_to_file("res://scenes/ui/TournamentHub.tscn")
 
 func _start_match() -> void:
 	# Stash the fixture context so the Hub records the result when we return.

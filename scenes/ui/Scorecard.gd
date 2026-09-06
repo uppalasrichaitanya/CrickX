@@ -193,6 +193,7 @@ func _add_row(c1: String, c2: String, c3: String, c4: String, c5: String, c6: St
 		var lbl = Label.new()
 		lbl.text = cols[i]
 		lbl.custom_minimum_size.x = widths[i]
+		lbl.clip_text = true
 		if is_header:
 			lbl.add_theme_color_override("font_color", Constants.COLOR_ACCENT_GREEN)
 			lbl.add_theme_font_size_override("font_size", 13)
@@ -204,6 +205,7 @@ func _add_row(c1: String, c2: String, c3: String, c4: String, c5: String, c6: St
 	content.add_child(hbox)
 
 func _on_continue() -> void:
+	AudioManager.play_click()
 	var fade = create_tween()
 	fade.tween_property(self, "modulate:a", 0.0, Constants.SCENE_FADE_DURATION)
 	await fade.finished

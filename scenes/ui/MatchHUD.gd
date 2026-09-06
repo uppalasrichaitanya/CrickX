@@ -67,6 +67,12 @@ var commentary_tween: Tween = null
 @onready var lbl_drs := $StatusBar/DRS
 @onready var btn_ff := $StatusBar/FFBtn
 @onready var btn_wagon := $StatusBar/WagonBtn
+@onready var btn_quit := $StatusBar/QuitBtn
+
+# ─── Quit confirm dialog ───
+@onready var quit_confirm := $QuitConfirm
+@onready var btn_quit_yes := $QuitConfirm/QuitPanel/QuitVBox/QuitBtns/QuitYesBtn
+@onready var btn_quit_no := $QuitConfirm/QuitPanel/QuitVBox/QuitBtns/QuitNoBtn
 
 # ─── Field View ───
 var field_view: FieldView = null
@@ -171,8 +177,15 @@ func _ready() -> void:
 	
 	# Wagon wheel toggle
 	btn_wagon.toggled.connect(func(pressed: bool) -> void:
+		AudioManager.play_click()
 		if field_view:
 			field_view.toggle_wagon(pressed))
+	
+	# Mid-match quit (with confirm — a stray tap must not kill a match)
+	btn_quit.pressed.connect(_on_quit_pressed)
+	btn_quit_yes.pressed.connect(_on_quit_confirmed)
+	btn_quit_no.pressed.connect(func(): quit_confirm.visible = false)
+	quit_confirm.visible = false
 	
 	# Field view (visual match rendering in the center band)
 	var fv_scene = load("res://scenes/match/FieldView.tscn")
@@ -491,8 +504,33 @@ func _on_drs_timeout() -> void:
 # FAST FORWARD
 # ═══════════════════════════════════════
 func _on_ff_toggled(pressed: bool) -> void:
+	AudioManager.play_click()
 	MatchEngine.fast_forward = pressed
 	btn_ff.text = "▶️" if pressed else "⏩"
+
+# ═══════════════════════════════════════
+# MID-MATCH QUIT (confirm dialog — stray taps must not kill a match)
+# ═══════════════════════════════════════
+func _on_quit_pressed() -> void:
+	AudioManager.play_click()
+	quit_confirm.visible = true
+
+func _on_quit_confirmed() -> void:
+	AudioManager.play_click()
+	quit_confirm.visible = false
+	# Stop all input paths first so nothing fires during the fade-out.
+	is_waiting_for_input = false
+	is_waiting_for_bowl = false
+	shot_panel.visible = false
+	bowl_panel.visible = false
+	drs_popup.visible = false
+	MatchEngine.abort_match()
+	if NetworkManager.online:
+		NetworkManager.disconnect_gracefully()
+	var fade := create_tween()
+	fade.tween_property(self, "modulate:a", 0.0, Constants.SCENE_FADE_DURATION)
+	await fade.finished
+	get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
 
 # Route a resolved ball to the field view + milestone fireworks.
 func _on_field_outcome(outcome: Dictionary) -> void:

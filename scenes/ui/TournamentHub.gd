@@ -87,6 +87,7 @@ func _on_team_picked() -> void:
 	var items: Array = pick_list.get_selected_items()
 	if items.is_empty():
 		return
+	AudioManager.play_click()
 	var team = GameManager.all_teams[items[0]]
 	TournamentManager.start_new_tournament(team)
 	pick_panel.visible = false
@@ -153,6 +154,7 @@ func _on_play() -> void:
 	var nxt: Dictionary = TournamentManager.next_human_fixture()
 	if nxt.is_empty():
 		return
+	AudioManager.play_click()
 	var home = TournamentManager.team_by_name(nxt["home"])
 	var away = TournamentManager.team_by_name(nxt["away"])
 	var human = TournamentManager.team_by_name(TournamentManager.human_team_name)
@@ -166,6 +168,7 @@ func _on_play() -> void:
 func _on_sim() -> void:
 	# Simulate all AI fixtures of the current group stage, then advance stages
 	# if possible. Runs visibly fast via fast_forward.
+	AudioManager.play_click()
 	_sim_pending()
 	# After simming, stages may advance (e.g., group stage completed)
 	TournamentManager.advance_stage()
@@ -321,16 +324,19 @@ func _on_squad() -> void:
 	var human = TournamentManager.team_by_name(TournamentManager.human_team_name)
 	if human == null:
 		return
+	AudioManager.play_click()
 	GameManager.set_meta("xi_team", human)
 	GameManager.set_meta("xi_return", "res://scenes/ui/TournamentHub.tscn")
 	GameManager.set_meta("xi_start_match", false)
 	_fade_to("res://scenes/ui/XIPicker.tscn")
 
 func _on_abandon() -> void:
+	AudioManager.play_click()
 	TournamentManager.abandon()
 	_fade_to("res://scenes/ui/MainMenu.tscn")
 
 func _on_back() -> void:
+	AudioManager.play_click()
 	_fade_to("res://scenes/ui/MainMenu.tscn")
 
 func _fade_to(scene_path: String) -> void:

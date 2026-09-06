@@ -56,20 +56,25 @@ func _fade_to_scene(scene_path: String) -> void:
 	get_tree().change_scene_to_file(scene_path)
 
 func _on_quick_match() -> void:
+	AudioManager.play_click()
 	_fade_to_scene("res://scenes/ui/TeamSelect.tscn")
 
 func _on_tournament() -> void:
 	# Resume a saved tournament if one exists, else start fresh via the hub
 	# (the hub shows a team picker when no tournament is active).
+	AudioManager.play_click()
 	_fade_to_scene("res://scenes/ui/TournamentHub.tscn")
 
 func _on_multiplayer() -> void:
+	AudioManager.play_click()
 	_fade_to_scene("res://scenes/ui/MultiplayerMenu.tscn")
 
 func _on_records() -> void:
+	AudioManager.play_click()
 	_fade_to_scene("res://scenes/ui/CareerRecords.tscn")
 
 func _on_settings() -> void:
+	AudioManager.play_click()
 	_fade_to_scene("res://scenes/ui/Settings.tscn")
 
 func _on_quit() -> void:

@@ -92,6 +92,17 @@ func start_match(team_a: TeamData, team_b: TeamData, format: int,
 			push_warning("MatchEngine: HUD never reported ready — starting ball flow anyway.")
 			_begin_match_flow()
 
+func abort_match() -> void:
+	# Abandon the in-progress match (mid-match quit). Bumping the generation
+	# token makes every suspended ball-flow coroutine abort on its next resume
+	# check, and IDLE blocks any new input from starting another ball.
+	_match_gen += 1
+	_match_pending = false
+	_net_wait = false
+	current_state = State.IDLE
+	is_human_batting = false
+	is_human_bowling = false
+
 # Human plays their team's role in the current innings: bats if their side
 # is at the crease, bowls otherwise (when the mode allows bowling).
 # Hot-seat: both sides are human, so both flags stay true every innings.

@@ -334,7 +334,9 @@ func _get_batsmen_stats() -> Array:
 func _get_bowler_stats() -> Array:
 	var stats = []
 	for p in bowling_team.playing_xi:
-		if p.match_overs_bowled > 0:
+		# Include anyone who bowled — a bowler who conceded only via
+		# wides/no-balls in an unfinished over still owns those runs.
+		if p.match_overs_bowled > 0 or p.match_runs_conceded > 0 or p.match_wickets > 0:
 			stats.append({
 				"name": p.player_name,
 				"overs": p.match_overs_bowled,

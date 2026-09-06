@@ -60,6 +60,7 @@ func _on_start() -> void:
 		warning_label.visible = true
 		return
 	warning_label.visible = false
+	AudioManager.play_click()
 	var team_a = GameManager.all_teams[selected_team_a]
 	var team_b = GameManager.all_teams[selected_team_b]
 	var fade = create_tween()
@@ -78,6 +79,7 @@ func _on_start() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/XIPicker.tscn")
 
 func _on_back() -> void:
+	AudioManager.play_click()
 	var fade = create_tween()
 	fade.tween_property(self, "modulate.a", 0.0, Constants.SCENE_FADE_DURATION)
 	await fade.finished

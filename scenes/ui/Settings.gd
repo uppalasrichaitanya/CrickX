@@ -2,7 +2,9 @@
 extends Control
 
 @onready var master_slider := $PanelContainer/VBoxContainer/MasterVolume/HSlider
+@onready var master_value := $PanelContainer/VBoxContainer/MasterVolume/ValueLabel
 @onready var sfx_slider := $PanelContainer/VBoxContainer/SFXVolume/HSlider
+@onready var sfx_value := $PanelContainer/VBoxContainer/SFXVolume/ValueLabel
 @onready var difficulty_btn := $PanelContainer/VBoxContainer/Difficulty/OptionButton
 @onready var fullscreen_check := $PanelContainer/VBoxContainer/Fullscreen/CheckButton
 @onready var btn_back := $PanelContainer/VBoxContainer/BtnBack
@@ -14,6 +16,8 @@ func _ready() -> void:
 	
 	master_slider.value = GameManager.master_volume * 100.0
 	sfx_slider.value = GameManager.sfx_volume * 100.0
+	master_value.text = "%d%%" % int(GameManager.master_volume * 100.0)
+	sfx_value.text = "%d%%" % int(GameManager.sfx_volume * 100.0)
 	fullscreen_check.button_pressed = GameManager.is_fullscreen
 	
 	difficulty_btn.clear()
@@ -30,10 +34,12 @@ func _ready() -> void:
 
 func _on_master_changed(val: float) -> void:
 	GameManager.master_volume = val / 100.0
+	master_value.text = "%d%%" % int(val)
 	AudioManager.set_master_volume(GameManager.master_volume)
 
 func _on_sfx_changed(val: float) -> void:
 	GameManager.sfx_volume = val / 100.0
+	sfx_value.text = "%d%%" % int(val)
 	AudioManager.set_sfx_volume(GameManager.sfx_volume)
 
 func _on_difficulty_changed(idx: int) -> void:

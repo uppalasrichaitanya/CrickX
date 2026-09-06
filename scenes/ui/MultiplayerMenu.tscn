@@ -138,11 +138,13 @@ alignment = 1
 custom_minimum_size = Vector2(220, 52)
 layout_mode = 2
 text = "🖥 Host Game"
+tooltip_text = "Host a LAN match — a friend joins with your IP"
 
 [node name="BtnJoin" type="Button" parent="BtnRow"]
 custom_minimum_size = Vector2(220, 52)
 layout_mode = 2
 text = "🔌 Join Game"
+tooltip_text = "Join a hosted LAN match at this IP and port"
 
 [node name="Status" type="Label" parent="."]
 layout_mode = 1
@@ -170,3 +172,4 @@ offset_top = -65.0
 offset_right = 100.0
 offset_bottom = -15.0
 text = "← Back"
+tooltip_text = "Back to main menu (disconnects)"

@@ -103,11 +103,13 @@ alignment = 1
 custom_minimum_size = Vector2(140, 50)
 layout_mode = 2
 text = "HEADS"
+tooltip_text = "Call heads"
 
 [node name="BtnTails" type="Button" parent="CallRow"]
 custom_minimum_size = Vector2(140, 50)
 layout_mode = 2
 text = "TAILS"
+tooltip_text = "Call tails"
 
 [node name="ChoiceRow" type="HBoxContainer" parent="."]
 layout_mode = 1
@@ -125,11 +127,13 @@ alignment = 1
 custom_minimum_size = Vector2(180, 50)
 layout_mode = 2
 text = "🏏 BAT FIRST"
+tooltip_text = "Bat first and set a target"
 
 [node name="BtnBowl" type="Button" parent="ChoiceRow"]
 custom_minimum_size = Vector2(180, 50)
 layout_mode = 2
 text = "🎳 BOWL FIRST"
+tooltip_text = "Bowl first and chase later"
 
 [node name="StartRow" type="HBoxContainer" parent="."]
 layout_mode = 1
@@ -138,13 +142,22 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -150.0
+offset_left = -260.0
 offset_top = -80.0
-offset_right = 150.0
+offset_right = 260.0
 offset_bottom = -30.0
+theme_override_constants/separation = 20
 alignment = 1
+
+[node name="BtnBack" type="Button" parent="StartRow"]
+custom_minimum_size = Vector2(150, 50)
+layout_mode = 2
+text = "← Back"
+tooltip_text = "Cancel the toss and go back"
+tooltip_text = "Back to tournament hub"
 
 [node name="BtnStart" type="Button" parent="StartRow"]
 custom_minimum_size = Vector2(260, 50)
 layout_mode = 2
 text = "▶ Start Match"
+tooltip_text = "Start the match with this order"

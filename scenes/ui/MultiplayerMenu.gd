@@ -135,6 +135,7 @@ func _set_status(t: String) -> void:
 	lbl_status.text = t
 
 func _on_back() -> void:
+	AudioManager.play_click()
 	NetworkManager.disconnect_gracefully()
 	hosting = false
 	joining = false

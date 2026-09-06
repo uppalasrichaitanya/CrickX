@@ -171,6 +171,7 @@ text = "DRS: 🟢"
 [node name="FFBtn" type="Button" parent="StatusBar"]
 layout_mode = 2
 custom_minimum_size = Vector2(44, 0)
+toggle_mode = true
 text = "⏩"
 tooltip_text = "Fast-forward: skip the wait between balls"
 
@@ -180,6 +181,13 @@ custom_minimum_size = Vector2(44, 0)
 toggle_mode = true
 text = "🧭"
 tooltip_text = "Wagon wheel: show every shot line this innings"
+
+[node name="QuitBtn" type="Button" parent="StatusBar"]
+layout_mode = 2
+custom_minimum_size = Vector2(44, 0)
+text = "✕"
+tooltip_text = "Quit match (back to menu)"
+tooltip_text = "Quit match (back to menu)"
 
 [node name="OverDotsBar" type="PanelContainer" parent="."]
 layout_mode = 1
@@ -300,18 +308,22 @@ theme_override_constants/v_separation = 8
 [node name="BtnBowl1" type="Button" parent="BowlSelectionPanel/BowlVBox/Grid"]
 custom_minimum_size = Vector2(220, 48)
 text = "🎯 [1] Yorker"
+tooltip_text = "Pick this delivery"
 
 [node name="BtnBowl2" type="Button" parent="BowlSelectionPanel/BowlVBox/Grid"]
 custom_minimum_size = Vector2(220, 48)
 text = "⚡ [2] Short Ball"
+tooltip_text = "Pick this delivery"
 
 [node name="BtnBowl3" type="Button" parent="BowlSelectionPanel/BowlVBox/Grid"]
 custom_minimum_size = Vector2(220, 48)
 text = "🎈 [3] Full Toss"
+tooltip_text = "Pick this delivery"
 
 [node name="BtnBowl4" type="Button" parent="BowlSelectionPanel/BowlVBox/Grid"]
 custom_minimum_size = Vector2(220, 48)
 text = "🐢 [4] Slower Ball"
+tooltip_text = "Pick this delivery"
 
 [node name="BowlLocked" type="Label" parent="BowlSelectionPanel/BowlVBox"]
 visible = false
@@ -327,6 +339,7 @@ custom_minimum_size = Vector2(260, 52)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "▶ Batting player: READY?"
+tooltip_text = "Reveal the locked-in delivery"
 
 [node name="DeliveryAlert" type="PanelContainer" parent="."]
 visible = false
@@ -441,8 +454,71 @@ alignment = 1
 [node name="DRSYesBtn" type="Button" parent="DRSPopup/DRSPanel/DRSVBox/DRSBtns"]
 custom_minimum_size = Vector2(160, 50)
 text = "🙋 REVIEW"
+tooltip_text = "Challenge the decision (uses one review)"
 
 [node name="DRSNoBtn" type="Button" parent="DRSPopup/DRSPanel/DRSVBox/DRSBtns"]
 custom_minimum_size = Vector2(160, 50)
 text = "✋ NO REVIEW"
+tooltip_text = "Accept the umpire's decision"
+
+[node name="QuitConfirm" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="QuitDim" type="ColorRect" parent="QuitConfirm"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.72)
+
+[node name="QuitPanel" type="PanelContainer" parent="QuitConfirm"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -90.0
+offset_right = 220.0
+offset_bottom = 90.0
+
+[node name="QuitVBox" type="VBoxContainer" parent="QuitConfirm/QuitPanel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="QuitTitle" type="Label" parent="QuitConfirm/QuitPanel/QuitVBox"]
+layout_mode = 2
+text = "Quit this match?"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="QuitInfo" type="Label" parent="QuitConfirm/QuitPanel/QuitVBox"]
+layout_mode = 2
+text = "The match will be abandoned (no result saved)."
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 2
+
+[node name="QuitBtns" type="HBoxContainer" parent="QuitConfirm/QuitPanel/QuitVBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="QuitYesBtn" type="Button" parent="QuitConfirm/QuitPanel/QuitVBox/QuitBtns"]
+custom_minimum_size = Vector2(150, 48)
+text = "✔ Quit Match"
+tooltip_text = "Abandon the match (no result saved)"
+
+[node name="QuitNoBtn" type="Button" parent="QuitConfirm/QuitPanel/QuitVBox/QuitBtns"]
+custom_minimum_size = Vector2(150, 48)
+text = "▶ Keep Playing"
+tooltip_text = "Close this dialog and continue"
 

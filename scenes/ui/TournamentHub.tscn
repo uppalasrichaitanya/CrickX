@@ -101,26 +101,31 @@ theme_override_font_sizes/font_size = 14
 layout_mode = 2
 custom_minimum_size = Vector2(0, 52)
 text = "🏏 Play Next Fixture"
+tooltip_text = "Play your next match (toss included)"
 
 [node name="BtnSim" type="Button" parent="Actions"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 46)
 text = "▶ Sim Other Matches"
+tooltip_text = "Quick-simulate every fixture except yours"
 
 [node name="BtnSquad" type="Button" parent="Actions"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 46)
 text = "📋 My Squad (XI)"
+tooltip_text = "Pick your playing XI for the tournament"
 
 [node name="BtnAbandon" type="Button" parent="Actions"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 40)
 text = "✖ Abandon Tournament"
+tooltip_text = "Delete this tournament and return to menu"
 
 [node name="BtnBack" type="Button" parent="Actions"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 40)
 text = "← Back to Menu"
+tooltip_text = "Save and return to main menu"
 
 [node name="PickPanel" type="PanelContainer" parent="."]
 visible = false
@@ -149,3 +154,4 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 52)
 size_flags_horizontal = 4
 text = "🏏 Start Tournament"
+tooltip_text = "Begin the group stage with this team"

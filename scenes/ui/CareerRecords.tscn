@@ -96,8 +96,10 @@ alignment = 1
 custom_minimum_size = Vector2(160, 44)
 layout_mode = 2
 text = "← Back"
+tooltip_text = "Back to main menu"
 
 [node name="BtnReset" type="Button" parent="BottomBar"]
 custom_minimum_size = Vector2(200, 44)
 layout_mode = 2
 text = "🗑 Reset Records"
+tooltip_text = "Erase all career records permanently"
