@@ -4,6 +4,7 @@ extends Control
 @onready var btn_quick_match := $VBoxContainer/BtnQuickMatch
 @onready var btn_tournament := $VBoxContainer/BtnTournament
 @onready var btn_multiplayer := $VBoxContainer/BtnMultiplayer
+@onready var btn_records := $VBoxContainer/BtnRecords
 @onready var btn_settings := $VBoxContainer/BtnSettings
 @onready var btn_quit := $VBoxContainer/BtnQuit
 @onready var anim_ball := $AnimatedBall
@@ -20,11 +21,12 @@ func _ready() -> void:
 	btn_quick_match.pressed.connect(_on_quick_match)
 	btn_tournament.pressed.connect(_on_tournament)
 	btn_multiplayer.pressed.connect(_on_multiplayer)
+	btn_records.pressed.connect(_on_records)
 	btn_settings.pressed.connect(_on_settings)
 	btn_quit.pressed.connect(_on_quit)
 	
 	# Button hover effects
-	for btn in [btn_quick_match, btn_tournament, btn_multiplayer, btn_settings, btn_quit]:
+	for btn in [btn_quick_match, btn_tournament, btn_multiplayer, btn_records, btn_settings, btn_quit]:
 		btn.mouse_entered.connect(_on_btn_hover.bind(btn))
 		btn.mouse_exited.connect(_on_btn_unhover.bind(btn))
 	
@@ -63,6 +65,9 @@ func _on_tournament() -> void:
 
 func _on_multiplayer() -> void:
 	pass  # Planned: LAN multiplayer (see implementation_plan.md Phase 5)
+
+func _on_records() -> void:
+	_fade_to_scene("res://scenes/ui/CareerRecords.tscn")
 
 func _on_settings() -> void:
 	_fade_to_scene("res://scenes/ui/Settings.tscn")

@@ -313,6 +313,21 @@ text = "🎈 [3] Full Toss"
 custom_minimum_size = Vector2(220, 48)
 text = "🐢 [4] Slower Ball"
 
+[node name="BowlLocked" type="Label" parent="BowlSelectionPanel/BowlVBox"]
+visible = false
+layout_mode = 2
+text = "🔒 Delivery locked — pass the device!"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="BtnBowlReady" type="Button" parent="BowlSelectionPanel/BowlVBox"]
+visible = false
+custom_minimum_size = Vector2(260, 52)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "▶ Batting player: READY?"
+
 [node name="DeliveryAlert" type="PanelContainer" parent="."]
 visible = false
 layout_mode = 1

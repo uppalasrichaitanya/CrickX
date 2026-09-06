@@ -26,6 +26,7 @@ SaveManager="*res://autoloads/SaveManager.gd"
 NetworkManager="*res://autoloads/NetworkManager.gd"
 CommentaryManager="*res://autoloads/CommentaryManager.gd"
 TournamentManager="*res://autoloads/TournamentManager.gd"
+CareerManager="*res://autoloads/CareerManager.gd"
 
 [display]
 

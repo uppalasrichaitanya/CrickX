@@ -91,6 +91,12 @@ disabled = true
 text = "👥  Multiplayer (coming soon)"
 tooltip_text = "Planned for a future update"
 
+[node name="BtnRecords" type="Button" parent="VBoxContainer"]
+custom_minimum_size = Vector2(280, 55)
+layout_mode = 2
+text = "📊  Records"
+tooltip_text = "All-time career batting and bowling tables"
+
 [node name="BtnSettings" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)
 layout_mode = 2

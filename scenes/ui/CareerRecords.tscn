@@ -1,0 +1,103 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/CareerRecords.gd" id="1"]
+
+[node name="CareerRecords" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.051, 0.067, 0.09, 1)
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -250.0
+offset_top = 16.0
+offset_right = 250.0
+offset_bottom = 56.0
+text = "📊 CAREER RECORDS"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0, 0.784, 0.325, 1)
+theme_override_font_sizes/font_size = 30
+
+[node name="Scroll" type="ScrollContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 60.0
+offset_top = 66.0
+offset_right = -60.0
+offset_bottom = -70.0
+
+[node name="VBox" type="VBoxContainer" parent="Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="BatTitle" type="Label" parent="Scroll/VBox"]
+layout_mode = 2
+text = "BATTING — most runs"
+theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="BatPanel" type="PanelContainer" parent="Scroll/VBox"]
+layout_mode = 2
+
+[node name="BatVBox" type="VBoxContainer" parent="Scroll/VBox/BatPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="BowlTitle" type="Label" parent="Scroll/VBox"]
+layout_mode = 2
+text = "BOWLING — most wickets"
+theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="BowlPanel" type="PanelContainer" parent="Scroll/VBox"]
+layout_mode = 2
+
+[node name="BowlVBox" type="VBoxContainer" parent="Scroll/VBox/BowlPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="EmptyLabel" type="Label" parent="Scroll/VBox"]
+layout_mode = 2
+text = "No matches played yet — records appear here after your first match."
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.545, 0.58, 0.624, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="BottomBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -260.0
+offset_top = -60.0
+offset_right = 260.0
+offset_bottom = -15.0
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="BtnBack" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+text = "← Back"
+
+[node name="BtnReset" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(200, 44)
+layout_mode = 2
+text = "🗑 Reset Records"

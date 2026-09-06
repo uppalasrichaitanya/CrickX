@@ -9,6 +9,7 @@ var start_after_confirm: bool = false   # Quick Match: start the match on confir
 var qm_team_b: TeamData = null
 var qm_format: int = 0
 var qm_full: bool = false
+var qm_hotseat: bool = false
 
 var picked: Array[PlayerData] = []
 
@@ -41,6 +42,8 @@ func _ready() -> void:
 		qm_format = int(GameManager.get_meta("xi_format"))
 	if GameManager.has_meta("xi_full"):
 		qm_full = bool(GameManager.get_meta("xi_full"))
+	if GameManager.has_meta("xi_hotseat"):
+		qm_hotseat = bool(GameManager.get_meta("xi_hotseat"))
 	
 	title.text = "PICK %s'S XI" % team.team_name.to_upper()
 	# Prefill with the current XI (default or previously picked)
@@ -139,8 +142,20 @@ func _on_confirm() -> void:
 	fade.tween_property(self, "modulate:a", 0.0, Constants.SCENE_FADE_DURATION)
 	await fade.finished
 	if start_after_confirm and qm_team_b != null:
+		# Hot-seat: team B picks its XI second, then the match starts.
+		if qm_hotseat and not bool(GameManager.get_meta("xi_hotseat_b_done", false)):
+			GameManager.set_meta("xi_hotseat_b_done", true)
+			GameManager.set_meta("xi_team", qm_team_b)
+			var fade2 := create_tween()
+			fade2.tween_property(self, "modulate:a", 0.0, Constants.SCENE_FADE_DURATION)
+			await fade2.finished
+			get_tree().change_scene_to_file("res://scenes/ui/XIPicker.tscn")
+			return
 		GameManager.return_scene = "res://scenes/ui/MainMenu.tscn"
-		MatchEngine.start_match(team, qm_team_b, qm_format, team, qm_full)
+		var bat_first = GameManager.get_meta("xi_bat_first") if GameManager.has_meta("xi_bat_first") else team
+		var other = qm_team_b if bat_first == team else team
+		var human = null if qm_hotseat else team
+		MatchEngine.start_match(bat_first, other, qm_format, human, qm_full, qm_hotseat)
 		get_tree().change_scene_to_file("res://scenes/ui/MatchHUD.tscn")
 	else:
 		get_tree().change_scene_to_file(return_scene)

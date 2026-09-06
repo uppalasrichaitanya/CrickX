@@ -42,6 +42,11 @@ var commentary_tween: Tween = null
 # ─── Bowl Selection ───
 @onready var bowl_panel := $BowlSelectionPanel
 @onready var bowl_timer_bar := $BowlSelectionPanel/BowlVBox/TimerBar
+@onready var bowl_grid := $BowlSelectionPanel/BowlVBox/Grid
+@onready var bowl_locked := $BowlSelectionPanel/BowlVBox/BowlLocked
+@onready var btn_bowl_ready := $BowlSelectionPanel/BowlVBox/BtnBowlReady
+@onready var bowl_title := $BowlSelectionPanel/BowlVBox/Title
+@onready var shot_title := $ShotSelectionPanel/ShotVBox/Title
 @onready var btn_bowl_1 := $BowlSelectionPanel/BowlVBox/Grid/BtnBowl1
 @onready var btn_bowl_2 := $BowlSelectionPanel/BowlVBox/Grid/BtnBowl2
 @onready var btn_bowl_3 := $BowlSelectionPanel/BowlVBox/Grid/BtnBowl3
@@ -81,6 +86,7 @@ var drs_timer: Timer = null
 var is_waiting_for_input: bool = false
 var is_waiting_for_bowl: bool = false
 var bowl_options: Array[int] = []
+var _pending_bowl: int = -1  # Hot-seat: locked-in delivery awaiting the handoff tap
 var _weather_pitch := WeatherPitchSystem.new()
 const DRS_REVIEW_WINDOW: float = 5.0
 
@@ -150,6 +156,7 @@ func _ready() -> void:
 	btn_bowl_2.pressed.connect(func(): _select_bowl(1))
 	btn_bowl_3.pressed.connect(func(): _select_bowl(2))
 	btn_bowl_4.pressed.connect(func(): _select_bowl(3))
+	btn_bowl_ready.pressed.connect(_on_bowl_ready)
 	
 	# DRS buttons
 	btn_drs_yes.pressed.connect(func(): _select_drs(true))
@@ -207,6 +214,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if i < bowl_options.size() and event.is_action_pressed("shot_%d" % (i + 1)):
 				_select_bowl(i)
 				break
+	elif _pending_bowl >= 0 and event.is_action_pressed("ui_accept"):
+		_on_bowl_ready()
 
 func _show_delivery_alert(delivery_name: String) -> void:
 	# Flash the delivery type on screen
@@ -223,6 +232,8 @@ func _show_shot_selection(delivery_name: String) -> void:
 	shot_panel.visible = true
 	delivery_alert.visible = true
 	lbl_delivery_name.text = "⚡ " + delivery_name + " — REACT!"
+	if MatchEngine.hotseat and GameManager.batting_team:
+		shot_title.text = "⚡ %s — REACT — CHOOSE YOUR SHOT" % GameManager.batting_team.team_name.to_upper()
 	
 	timer_bar.value = 100.0
 	selection_timer.start()
@@ -249,8 +260,14 @@ func _on_selection_timeout() -> void:
 # ═══════════════════════════════════════
 func _show_bowl_selection() -> void:
 	is_waiting_for_bowl = true
+	_pending_bowl = -1
 	bowl_panel.visible = true
 	delivery_alert.visible = false
+	bowl_grid.visible = true
+	bowl_locked.visible = false
+	btn_bowl_ready.visible = false
+	if MatchEngine.hotseat and GameManager.bowling_team:
+		bowl_title.text = "🎳 %s — PICK A DELIVERY (in secret!)" % GameManager.bowling_team.team_name.to_upper()
 	bowl_options = _bowl_options_for(GameManager.current_bowler)
 	for i in range(4):
 		var btn = [btn_bowl_1, btn_bowl_2, btn_bowl_3, btn_bowl_4][i]
@@ -267,11 +284,34 @@ func _show_bowl_selection() -> void:
 func _select_bowl(idx: int) -> void:
 	if not is_waiting_for_bowl or idx >= bowl_options.size():
 		return
+	AudioManager.play_click()
+	if MatchEngine.hotseat:
+		# Hot-seat secrecy: lock the choice in, hide the options, and hand
+		# the device over. The delivery is only revealed on Ready.
+		_pending_bowl = idx
+		is_waiting_for_bowl = false
+		bowl_timer.stop()
+		bowl_grid.visible = false
+		var bat := GameManager.batting_team.team_name if GameManager.batting_team else "Batting player"
+		bowl_locked.text = "🔒 Delivery locked — pass to %s!" % bat
+		bowl_locked.visible = true
+		btn_bowl_ready.visible = true
+		return
 	is_waiting_for_bowl = false
 	bowl_panel.visible = false
 	bowl_timer.stop()
-	AudioManager.play_click()
 	MatchEngine.receive_bowl_input(bowl_options[idx])
+
+func _on_bowl_ready() -> void:
+	# Hot-seat handoff complete — reveal the locked-in delivery.
+	if _pending_bowl < 0 or _pending_bowl >= bowl_options.size():
+		return
+	AudioManager.play_click()
+	bowl_panel.visible = false
+	bowl_locked.visible = false
+	btn_bowl_ready.visible = false
+	MatchEngine.receive_bowl_input(bowl_options[_pending_bowl])
+	_pending_bowl = -1
 
 func _on_bowl_timeout() -> void:
 	# Hesitated — random delivery it is.
@@ -296,7 +336,10 @@ func _bowl_label(delivery: int, idx: int) -> String:
 # DRS REVIEW
 # ═══════════════════════════════════════
 func _show_drs_review(wtype: String, reviews_left: int) -> void:
-	lbl_drs_info.text = "%s — %d review%s left" % [wtype, reviews_left, "" if reviews_left == 1 else "s"]
+	var who := ""
+	if MatchEngine.hotseat and GameManager.batting_team:
+		who = GameManager.batting_team.team_name + " — "
+	lbl_drs_info.text = "%s%s — %d review%s left" % [who, wtype, reviews_left, "" if reviews_left == 1 else "s"]
 	drs_popup.visible = true
 	drs_timer_bar.value = 100.0
 	var tw = create_tween()

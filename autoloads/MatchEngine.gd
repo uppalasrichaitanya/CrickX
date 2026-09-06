@@ -30,9 +30,9 @@ var weather_pitch := WeatherPitchSystem.new()
 var _hud_connected: bool = false
 var _match_pending: bool = false
 var _match_gen: int = 0  # Generation token — zombie coroutines from old matches abort on mismatch
-var full_mode: bool = false  # DEPRECATED: implied by human_side != null (kept for HUD text)
 var human_side: TeamData = null  # The player's team this match (null = pure AI match)
 var human_bowls_role: bool = true  # Does the human play their bowling innings?
+var hotseat: bool = false  # Hot-seat: both teams are human (pass-the-device)
 var fast_forward: bool = false  # Collapse inter-ball delays for quick auto-sim
 var _pending_drs_outcome: Dictionary = {}
 var _pending_drs_wicket_type: String = ""
@@ -56,11 +56,13 @@ func note_hud_gone() -> void:
 	_hud_connected = false
 
 func start_match(team_a: TeamData, team_b: TeamData, format: int,
-		human_team: TeamData = null, human_plays_bowling: bool = true) -> void:
+		human_team: TeamData = null, human_plays_bowling: bool = true,
+		hotseat_mode: bool = false) -> void:
 	_match_gen += 1  # Any ball-flow coroutines still awaiting from the last match now abort.
 	GameManager.start_new_match(team_a, team_b, format)
 	human_side = human_team
 	human_bowls_role = human_plays_bowling
+	hotseat = hotseat_mode
 	# Roles are derived from the human's team: bat when their side is at the
 	# crease, bowl when it fields (if the mode allows bowling).
 	_apply_roles()
@@ -89,8 +91,13 @@ func start_match(team_a: TeamData, team_b: TeamData, format: int,
 
 # Human plays their team's role in the current innings: bats if their side
 # is at the crease, bowls otherwise (when the mode allows bowling).
+# Hot-seat: both sides are human, so both flags stay true every innings.
 # Pure AI matches (human_side == null) leave both flags false.
 func _apply_roles() -> void:
+	if hotseat:
+		is_human_batting = true
+		is_human_bowling = true
+		return
 	if human_side == null:
 		is_human_batting = false
 		is_human_bowling = false
@@ -523,6 +530,7 @@ func _end_match(winner: String) -> void:
 	AudioManager.stop_ambient()
 	_credit_partial_over()  # chase completed mid-over — keep bowler figures honest
 	var scorecard = GameManager._build_scorecard()
+	CareerManager.record_match()
 	GameManager.match_ended.emit(winner, scorecard)
 	match_ended_signal.emit(winner)
 

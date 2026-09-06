@@ -11,17 +11,18 @@ var _const: Node = null
 var _failures: Array[String] = []
 var _results: Array[String] = []
 
-# Match plan: [label, format, max_overs, fast_forward, human_team_offset, human_bowls]
-# human_team_offset: -1 = pure AI match; 0 = teams[i] is the human side; 1 = teams[i+1] is human.
+# Match plan: [label, format, max_overs, fast_forward, human_team_offset, human_bowls, hotseat]
+# human_team_offset: -1 = pure AI match; 0/1 = teams[i]/teams[i+1] is human.
 var _matches: Array = [
-	["T20-A", 0, 3, false, -1, false],
-	["T20-B", 0, 3, false, -1, false],
-	["T20-C", 0, 3, false, -1, false],
-	["ODI-A", 1, 5, false, -1, false],
-	["T20-FF", 0, 3, true, -1, false],
-	["FULL-A", 0, 2, false, 0, true],
-	["TOSS-H1", 0, 2, false, 1, true],   # human side is team B -> bats 2nd, bowls 1st
-	["TOSS-H2", 0, 2, false, 0, false],  # human side is team A, no bowling -> bats 1st only
+	["T20-A", 0, 3, false, -1, false, false],
+	["T20-B", 0, 3, false, -1, false, false],
+	["T20-C", 0, 3, false, -1, false, false],
+	["ODI-A", 1, 5, false, -1, false, false],
+	["T20-FF", 0, 3, true, -1, false, false],
+	["FULL-A", 0, 2, false, 0, true, false],
+	["TOSS-H1", 0, 2, false, 1, true, false],
+	["TOSS-H2", 0, 2, false, 0, false, false],
+	["HOTSEAT", 0, 2, false, -1, false, true],
 ]
 var _match_index: int = 0
 var _running: bool = false
@@ -34,6 +35,7 @@ var _drop_count: int = 0
 var _hat_trick_count: int = 0
 var _cur_format: int = 0
 var _cur_full: bool = false
+var _cur_hotseat: bool = false
 var _shot_requests: int = 0
 var _bowl_requests: int = 0
 var _drs_requests: int = 0
@@ -51,6 +53,7 @@ func _initialize() -> void:
 	_engine.request_bowl_selection.connect(_on_request_bowl)
 	_engine.request_drs_review.connect(_on_request_drs)
 	_test_drs_directly()
+	_test_career()
 	process_frame.connect(_on_frame)
 
 func _on_request_shot(_name: String) -> void:
@@ -101,8 +104,10 @@ func _start_match(spec: Array) -> void:
 	var ff: bool = spec[3]
 	var human_off: int = spec[4]
 	var human_bowls: bool = spec[5]
+	var hotseat: bool = spec[6] if spec.size() > 6 else false
 	_cur_format = format
-	_cur_full = human_off >= 0
+	_cur_full = human_off >= 0 or hotseat
+	_cur_hotseat = hotseat
 	_engine.fast_forward = ff
 	var teams = _gm.all_teams
 	var team_a = teams[_match_index % teams.size()]
@@ -112,7 +117,7 @@ func _start_match(spec: Array) -> void:
 		human_team = team_a
 	elif human_off == 1:
 		human_team = team_b
-	_engine.start_match(team_a, team_b, format, human_team, human_bowls)
+	_engine.start_match(team_a, team_b, format, human_team, human_bowls, hotseat)
 	_gm.state["max_overs"] = max_overs
 	# Simulate a HUD that connects one frame late — exercises the pending-start handshake.
 	await process_frame
@@ -207,7 +212,17 @@ func _on_match_ended(winner: String) -> void:
 
 	# 8. Human-role specs: verify the derived roles match the human's team
 	#    (which innings saw shot vs bowl requests).
-	if _cur_full:
+	if _cur_hotseat:
+		# Both sides human: shots AND bowls in BOTH innings.
+		if _shots_inn1 < 3:
+			_failures.append("%s: expected >=3 shots in 1st innings, got %d" % [label, _shots_inn1])
+		if _bowls_inn1 < 3:
+			_failures.append("%s: expected >=3 bowls in 1st innings, got %d" % [label, _bowls_inn1])
+		if _shot_requests - _shots_inn1 < 3:
+			_failures.append("%s: expected >=3 shots in 2nd innings, got %d" % [label, _shot_requests - _shots_inn1])
+		if _bowl_requests - _bowls_inn1 < 3:
+			_failures.append("%s: expected >=3 bowls in 2nd innings, got %d" % [label, _bowl_requests - _bowls_inn1])
+	elif _cur_full:
 		var label8 := label
 		if label8 == "FULL-A":
 			# Human = team A: shots in the 1st innings, bowls in the 2nd
@@ -514,6 +529,59 @@ func _overs_from_string(s: String) -> float:
 
 func _finish_tournament() -> void:
 	_finish()
+
+# ─── Career unit checks (fabricated stats, no sim) ───
+func _test_career() -> void:
+	var cm = root.get_node("CareerManager")
+	var backup: Dictionary = cm.players.duplicate(true)
+	cm.reset()
+	# Fabricate one match worth of stats on two real players.
+	var bat = _gm.all_teams[0].playing_xi[0]
+	var bowl = _gm.all_teams[1].playing_xi[7]
+	bat.match_runs = 67
+	bat.match_balls = 40
+	bat.match_fours = 8
+	bat.match_sixes = 2
+	bat.is_out = true
+	bowl.match_wickets = 3
+	bowl.match_runs_conceded = 24
+	bowl.match_catches = 0
+	var fielder = _gm.all_teams[1].playing_xi[3]
+	fielder.match_catches = 2
+	_engine.human_side = null
+	_gm.batting_team = _gm.all_teams[0]
+	_gm.bowling_team = _gm.all_teams[1]
+	_gm.state["super_over"] = false
+	cm.record_match()
+	var e1: Dictionary = cm.players.get(bat.player_name, {})
+	if int(e1.get("runs", -1)) != 67 or int(e1.get("fifties", -1)) != 1:
+		_failures.append("career: batter aggregates wrong: %s" % [e1])
+	var e2: Dictionary = cm.players.get(bowl.player_name, {})
+	if int(e2.get("wickets", -1)) != 3 or int(e2.get("best_wkts", -1)) != 3:
+		_failures.append("career: bowler aggregates wrong: %s" % [e2])
+	if int(cm.players.get(fielder.player_name, {}).get("catches", -1)) != 2:
+		_failures.append("career: fielder catches wrong")
+	if cm.batting_table().is_empty() or cm.bowling_table().is_empty():
+		_failures.append("career: tables empty after recording")
+	# Super-over matches must NOT pollute career stats.
+	_gm.state["super_over"] = true
+	cm.record_match()
+	if int(cm.players[bat.player_name]["runs"]) != 67:
+		_failures.append("career: super-over match leaked into aggregates")
+	_gm.state["super_over"] = false
+	# Save/load round-trip.
+	cm.save()
+	cm.players.clear()
+	cm.load_career()
+	if int(cm.players.get(bat.player_name, {}).get("runs", -1)) != 67:
+		_failures.append("career: save/load round-trip lost data")
+	cm.reset()
+	if not cm.players.is_empty():
+		_failures.append("career: reset did not clear")
+	# Restore any pre-existing career data (don't clobber real saves).
+	cm.players = backup
+	cm.save()
+	print("[career] unit checks done")
 
 # ─── Direct DRS unit checks ───
 func _test_drs_directly() -> void:

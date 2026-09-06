@@ -16,7 +16,6 @@ var stage: int = Stage.GROUPS
 var human_team_name: String = ""
 var groups: Array = []               # [[TeamA, TeamB, ...], [...]]
 var fixtures: Array = []             # [{home: String, away: String, done: bool, winner: String}]
-var standings: Dictionary = {}       # {team_name: {P, W, L, runs_for, overs_for, runs_against, overs_against}}
 var semis: Array = []               # [{home, away, done, winner}, ...]
 var final_match: Dictionary = {}    # {home, away, done, winner}
 var champion: String = ""
@@ -30,7 +29,6 @@ func start_new_tournament(human_team: TeamData) -> void:
 	human_team_name = human_team.team_name
 	groups = []
 	fixtures = []
-	standings = {}
 	semis = []
 	final_match = {}
 	champion = ""
@@ -296,7 +294,6 @@ func abandon() -> void:
 	stage = Stage.DONE
 	groups = []
 	fixtures = []
-	standings = {}
 	semis = []
 	final_match = {}
 	SaveManager.delete_tournament_save()

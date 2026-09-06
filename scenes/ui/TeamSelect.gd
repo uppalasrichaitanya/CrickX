@@ -5,6 +5,7 @@ var selected_team_a: int = 0
 var selected_team_b: int = 1
 var selected_format: int = Constants.MatchFormat.T20
 var full_match: bool = false
+var hotseat_mode: bool = false
 
 @onready var team_a_list := $HBoxContainer/TeamAPanel/TeamAList
 @onready var team_b_list := $HBoxContainer/TeamBPanel/TeamBList
@@ -46,9 +47,12 @@ func _populate_options() -> void:
 	mode_btn.clear()
 	mode_btn.add_item("Bat vs AI", 0)
 	mode_btn.add_item("Full Match (Bat + Bowl)", 1)
+	mode_btn.add_item("Hot-Seat (2 Players)", 2)
 	mode_btn.selected = 0
 	mode_btn.item_selected.connect(func(idx: int) -> void:
-		full_match = mode_btn.get_item_id(idx) == 1
+		var id: int = mode_btn.get_item_id(idx)
+		full_match = id == 1
+		hotseat_mode = id == 2
 	)
 
 func _on_start() -> void:
@@ -66,8 +70,11 @@ func _on_start() -> void:
 	GameManager.set_meta("xi_return", "res://scenes/ui/TeamSelect.tscn")
 	GameManager.set_meta("xi_start_match", true)
 	GameManager.set_meta("xi_team_b", team_b)
+	GameManager.set_meta("xi_bat_first", team_a)
 	GameManager.set_meta("xi_format", selected_format)
 	GameManager.set_meta("xi_full", full_match)
+	GameManager.set_meta("xi_hotseat", hotseat_mode)
+	GameManager.set_meta("xi_hotseat_b_done", false)
 	get_tree().change_scene_to_file("res://scenes/ui/XIPicker.tscn")
 
 func _on_back() -> void:
