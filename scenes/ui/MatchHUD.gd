@@ -168,9 +168,12 @@ func _ready() -> void:
 	field_view = fv_scene.instantiate()
 	field_view.position = Vector2(140, 332)
 	add_child(field_view)
-	MatchEngine.delivery_thrown.connect(func(del: int) -> void: field_view.play_delivery(del))
+	MatchEngine.delivery_thrown.connect(func(del: int) -> void:
+		field_view.set_phase(GameManager.state.get("phase", 1))
+		field_view.play_delivery(del))
 	MatchEngine.ball_result_ready.connect(func(o: Dictionary) -> void: _on_field_outcome(o))
 	MatchEngine.second_innings_starting.connect(_on_second_innings_for_field)
+	MatchEngine.super_over_starting.connect(_on_super_over_for_field)
 	# A wicket ends the current partnership — reset its milestone tracker
 	GameManager.wicket_fallen.connect(func(_p, _w: String) -> void:
 		_partnership_milestone_shown = 0)
@@ -557,6 +560,19 @@ func _on_second_innings_for_field() -> void:
 	if field_view:
 		field_view.clear_wagon()
 	_partnership_milestone_shown = 0
+
+# Super over round: banner + fresh wagon wheel for the shootout.
+func _on_super_over_for_field(round_no: int) -> void:
+	if field_view:
+		field_view.clear_wagon()
+	_partnership_milestone_shown = 0
+	innings_break_popup.visible = true
+	var msg := "⚡ SUPER OVER ⚡\n\nScores level — sudden death!\n\n%s bat first" % GameManager.batting_team.team_name
+	if round_no > 1:
+		msg = "⚡ SUPER OVER %d ⚡\n\nTied again — sudden death!\n\n%s bat first" % [round_no, GameManager.batting_team.team_name]
+	lbl_innings_break.text = msg
+	await get_tree().create_timer(0.5 if MatchEngine.fast_forward else 2.5).timeout
+	innings_break_popup.visible = false
 
 func _on_innings_ended(scorecard: Dictionary) -> void:
 	# Don't transition away — MatchEngine handles the flow

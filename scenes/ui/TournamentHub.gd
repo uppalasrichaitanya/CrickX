@@ -8,6 +8,7 @@ extends Control
 @onready var fixtures_list := $LeftPanel/FixturesList
 @onready var btn_play := $Actions/BtnPlay
 @onready var btn_sim := $Actions/BtnSim
+@onready var btn_squad := $Actions/BtnSquad
 @onready var btn_abandon := $Actions/BtnAbandon
 @onready var btn_back := $Actions/BtnBack
 @onready var lbl_next := $Actions/NextLabel
@@ -23,6 +24,7 @@ func _ready() -> void:
 	
 	btn_play.pressed.connect(_on_play)
 	btn_sim.pressed.connect(_on_sim)
+	btn_squad.pressed.connect(_on_squad)
 	btn_abandon.pressed.connect(_on_abandon)
 	btn_back.pressed.connect(_on_back)
 	btn_pick.pressed.connect(_on_team_picked)
@@ -54,12 +56,14 @@ func _record_pending_match_result() -> void:
 		return
 	var gm := GameManager
 	if kind == "group":
-		TournamentManager.record_result(home, away, winner, {
-			"winner_runs": gm.state.get("total_runs", 0),
-			"winner_overs": 20.0,
-			"loser_runs": gm.first_innings_scorecard.get("total_runs", 0),
-			"loser_overs": 20.0,
-		})
+		# NRR context comes from the finished-match scorecard (main-match
+		# innings for super-over games — shootout runs never count).
+		var sc: Dictionary = GameManager.get_meta("last_scorecard") if GameManager.has_meta("last_scorecard") else {}
+		var innings: Array = TournamentManager.nrr_innings(sc, gm.first_innings_scorecard, winner) if not sc.is_empty() else []
+		var payload := {"winner_runs": 0, "winner_overs": 20.0, "loser_runs": 0, "loser_overs": 20.0}
+		if innings.size() == 2:
+			payload = TournamentManager.nrr_payload(innings[0], innings[1])
+		TournamentManager.record_result(home, away, winner, payload)
 		# Group stage may now be complete — try advancing
 		TournamentManager.advance_stage()
 	elif kind.begins_with("semi"):
@@ -107,7 +111,7 @@ func _refresh() -> void:
 		lbl_champion.visible = false
 	
 	# Next-fixture banner + button states
-	var nxt := TournamentManager.next_human_fixture()
+	var nxt: Dictionary = TournamentManager.next_human_fixture()
 	if nxt.is_empty():
 		btn_play.visible = false
 		lbl_next.text = "No more fixtures for your team" if TournamentManager.stage != TournamentManager.Stage.DONE else ""
@@ -146,7 +150,7 @@ func _populate_fixtures() -> void:
 		fixtures_list.add_item("🏆 CHAMPION: %s" % TournamentManager.champion)
 
 func _on_play() -> void:
-	var nxt := TournamentManager.next_human_fixture()
+	var nxt: Dictionary = TournamentManager.next_human_fixture()
 	if nxt.is_empty():
 		return
 	var home = TournamentManager.team_by_name(nxt["home"])
@@ -226,6 +230,16 @@ func _team_t20_score(bat: TeamData, bowl: TeamData, rng: RandomNumberGenerator) 
 	var base := 150.0 + (bat_avg - bowl_avg) * 0.9
 	var score := int(clampf(rng.randfn(base, 22.0), 60.0, 240.0))
 	return {"runs": score}
+
+func _on_squad() -> void:
+	# Open the XI picker for the human's team; changes persist into the save.
+	var human = TournamentManager.team_by_name(TournamentManager.human_team_name)
+	if human == null:
+		return
+	GameManager.set_meta("xi_team", human)
+	GameManager.set_meta("xi_return", "res://scenes/ui/TournamentHub.tscn")
+	GameManager.set_meta("xi_start_match", false)
+	_fade_to("res://scenes/ui/XIPicker.tscn")
 
 func _on_abandon() -> void:
 	TournamentManager.abandon()

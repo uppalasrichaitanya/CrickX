@@ -174,3 +174,57 @@ var ZONE_NAMES: Dictionary = {
 	FieldZone.COVER: "the covers",
 	FieldZone.POINT: "point",
 }
+
+# Fielding layouts per match phase: 11 entries of {zone, depth} where depth is
+# the fraction of the way from the striker's end toward the zone's rope point.
+# POWERPLAY: aggressive ring of catchers + 2 deep. MIDDLE: balanced.
+# DEATH: five boundary riders, five in the ring.
+var PHASE_FIELD_LAYOUTS: Dictionary = {
+	MatchPhase.POWERPLAY: [
+		{"zone": FieldZone.SQUARE_LEG, "depth": 0.28},
+		{"zone": FieldZone.MID_WICKET, "depth": 0.32},
+		{"zone": FieldZone.POINT, "depth": 0.30},
+		{"zone": FieldZone.COVER, "depth": 0.34},
+		{"zone": FieldZone.MID_OFF, "depth": 0.30},
+		{"zone": FieldZone.MID_ON, "depth": 0.32},
+		{"zone": FieldZone.FINE_LEG, "depth": 0.45},
+		{"zone": FieldZone.SQUARE_LEG, "depth": 0.72},
+		{"zone": FieldZone.LONG_ON, "depth": 0.90},
+		{"zone": FieldZone.COVER, "depth": 0.88},
+		{"zone": FieldZone.MID_WICKET, "depth": 0.70},
+	],
+	MatchPhase.MIDDLE: [
+		{"zone": FieldZone.MID_ON, "depth": 0.45},
+		{"zone": FieldZone.LONG_ON, "depth": 0.88},
+		{"zone": FieldZone.MID_WICKET, "depth": 0.55},
+		{"zone": FieldZone.SQUARE_LEG, "depth": 0.50},
+		{"zone": FieldZone.FINE_LEG, "depth": 0.60},
+		{"zone": FieldZone.MID_OFF, "depth": 0.48},
+		{"zone": FieldZone.COVER, "depth": 0.52},
+		{"zone": FieldZone.POINT, "depth": 0.50},
+		{"zone": FieldZone.LONG_ON, "depth": 0.90},
+		{"zone": FieldZone.COVER, "depth": 0.85},
+		{"zone": FieldZone.MID_WICKET, "depth": 0.82},
+	],
+	MatchPhase.DEATH: [
+		{"zone": FieldZone.FINE_LEG, "depth": 0.92},
+		{"zone": FieldZone.SQUARE_LEG, "depth": 0.88},
+		{"zone": FieldZone.MID_WICKET, "depth": 0.90},
+		{"zone": FieldZone.LONG_ON, "depth": 0.95},
+		{"zone": FieldZone.COVER, "depth": 0.92},
+		{"zone": FieldZone.MID_OFF, "depth": 0.45},
+		{"zone": FieldZone.COVER, "depth": 0.40},
+		{"zone": FieldZone.POINT, "depth": 0.42},
+		{"zone": FieldZone.MID_ON, "depth": 0.44},
+		{"zone": FieldZone.MID_WICKET, "depth": 0.40},
+		{"zone": FieldZone.SQUARE_LEG, "depth": 0.40},
+	],
+}
+
+# Catch-hold modifier for contested catches by fielding phase
+# (field up in the powerplay helps; spread at the death hurts).
+const CATCH_PHASE_MOD: Dictionary = {
+	MatchPhase.POWERPLAY: 0.04,
+	MatchPhase.MIDDLE: 0.0,
+	MatchPhase.DEATH: -0.05,
+}

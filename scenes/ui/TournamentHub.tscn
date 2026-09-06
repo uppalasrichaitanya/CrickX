@@ -107,6 +107,11 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 46)
 text = "▶ Sim Other Matches"
 
+[node name="BtnSquad" type="Button" parent="Actions"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 46)
+text = "📋 My Squad (XI)"
+
 [node name="BtnAbandon" type="Button" parent="Actions"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 40)

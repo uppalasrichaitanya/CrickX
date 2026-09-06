@@ -117,5 +117,13 @@ Defined in `Constants.gd` and Resources (`PlayerData.gd`, `TeamData.gd`).
 
 ---
 
+## 9. Match Authenticity Pack (XI selection, phase fielding, super overs)
+- **XI selection** (`scenes/ui/XIPicker.tscn` + `TeamData.set_playing_xi`): pick 11 from the 15-man squad (order = batting order) with live validation (exactly 11, unique, ≥1 bowler) and an auto-repair helper. Available from Team Select (Quick Match) and via a Squad button on the Tournament Hub (pick at creation, persisted in the tournament save as player-name lists, rehydrated on load — verified by an XI round-trip test). Engine guards: `reset_match_stats()` and the hat-trick ledger now cover the full squad so benched players never carry stale state.
+- **Phase-aware fielding** (`Constants.PHASE_FIELD_LAYOUTS`): powerplay ring, balanced middle, five boundary riders at the death. `MatchHUD` passes the current phase to `FieldView` on every delivery; fielders glide to the new layout on change (also fixing the old 9-slots-for-11 bug). The sim agrees: contested catches get a hold bonus in the powerplay and a penalty at the death (`CATCH_PHASE_MOD`).
+- **Super overs** (`GameManager.start_super_over` + `MatchEngine` tie branches): level T20 scores go to sudden death — 1 over per side, 2-wicket cap via `state["max_wickets"]`, chaser bats first, DEATH phase throughout, 1 DRS review each, repeating rounds until decided. Main-match scorecards are snapshotted for display + NRR (shootout runs never count). Scorecard renders a MAIN MATCH section; the tournament recorder uses the `nrr_innings`/`nrr_payload` helpers. Two genuine bugs found by the new tests along the way: the super-over *chase* allowed 10 wickets (swap reset the cap) and `update_phase` dragged the shootout back to POWERPLAY.
+- **Toss refactor fallout**: `start_match` takes the human's *team* and derives roles per innings (verified by TOSS-H1/H2 specs — human bowls 1st/bats 2nd and vice versa).
+
+---
+
 **End of Document**  
 *Use this text file directly as a knowledge base prompt when expanding features next.*

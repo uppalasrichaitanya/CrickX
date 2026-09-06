@@ -61,11 +61,14 @@ func _on_start() -> void:
 	var fade = create_tween()
 	fade.tween_property(self, "modulate.a", 0.0, Constants.SCENE_FADE_DURATION)
 	await fade.finished
-	# Full Match: human plays both their team's innings (bat + bowl).
-	# Bat vs AI: human bats, bowling is auto-simmed.
-	GameManager.return_scene = "res://scenes/ui/MainMenu.tscn"
-	MatchEngine.start_match(team_a, team_b, selected_format, team_a, full_match)
-	get_tree().change_scene_to_file("res://scenes/ui/MatchHUD.tscn")
+	# Route through the XI picker: it starts the match on confirm.
+	GameManager.set_meta("xi_team", team_a)
+	GameManager.set_meta("xi_return", "res://scenes/ui/TeamSelect.tscn")
+	GameManager.set_meta("xi_start_match", true)
+	GameManager.set_meta("xi_team_b", team_b)
+	GameManager.set_meta("xi_format", selected_format)
+	GameManager.set_meta("xi_full", full_match)
+	get_tree().change_scene_to_file("res://scenes/ui/XIPicker.tscn")
 
 func _on_back() -> void:
 	var fade = create_tween()

@@ -76,6 +76,9 @@ func _on_frame() -> void:
 			_tour_advance = false
 			_play_next_tour_fixture(root.get_node("TournamentManager"))
 		return
+	if _direct_test_active:
+		_drive_direct_test()
+		return
 	if not _running and _match_index < _matches.size():
 		_start_match(_matches[_match_index])
 
@@ -131,6 +134,9 @@ func _on_ball_result(outcome: Dictionary) -> void:
 			_reviewable_wickets += 1
 
 func _on_match_ended(winner: String) -> void:
+	if _direct_test_active:
+		_direct_endings.append(winner)
+		return
 	if _tournament_phase:
 		return  # Tournament matches are handled by _on_tour_match_ended
 	_running = false
@@ -180,13 +186,18 @@ func _on_match_ended(winner: String) -> void:
 	if _wide_count > max_overs * 6:
 		_failures.append("%s: %d wides in %d legal balls — wide rate still broken" % [label, _wide_count, max_overs * 6])
 
-	# 6. Target logic: winner must be consistent with the scores
-	if first.size() > 0:
+	# 6. Target logic: winner must be consistent with the scores.
+	#    Super-over games skip the strict check (the shootout decides).
+	if first.size() > 0 and not sc.get("super_over", false):
 		var target = first.get("total_runs", 0) + 1
 		var chased = sc.get("total_runs", 0)
 		var expected = sc.get("team_name", "") if chased >= target else first.get("team_name", "")
 		if winner != expected:
 			_failures.append("%s: winner %s inconsistent (chased %d vs target %d)" % [label, winner, chased, target])
+	if sc.get("super_over", false):
+		var mains: Array = sc.get("main_innings", [])
+		if mains.size() != 2:
+			_failures.append("%s: super-over scorecard missing main innings" % label)
 
 	# 7. DRS: reviews must stay within the format's bounds
 	var reviews_now = _gm.drs_reviews_batting
@@ -224,8 +235,8 @@ func _on_match_ended(winner: String) -> void:
 	_engine.fast_forward = false
 
 	_results.append(
-		"%-7s: %s won | 2nd inn %s/%d in %s ov | 1st inn %s/%d | wides %d, wickets %d, drops %d, reviews used %d%s" % [
-			label, winner,
+		"%-7s: %s won%s | 2nd inn %s/%d in %s ov | 1st inn %s/%d | wides %d, wickets %d, drops %d, reviews used %d%s" % [
+			label, winner, " [SO]" if sc.get("super_over", false) else "",
 			str(sc.get("total_runs")), sc.get("total_wickets"), str(sc.get("total_overs")),
 			str(first.get("total_runs")), first.get("total_wickets"),
 			_wide_count, _wicket_count, _drop_count, max_reviews - reviews_now,
@@ -233,7 +244,99 @@ func _on_match_ended(winner: String) -> void:
 		]
 	)
 
-	if _match_index >= _matches.size() and not _tournament_phase:
+	if _match_index >= _matches.size() and not _tournament_phase and not _direct_test_active:
+		_run_super_over_direct_test()
+
+# ─── Super-over direct mechanics test (synthetic tie, no RNG dependence) ───
+var _direct_test_active: bool = false
+var _direct_stage: int = -1
+var _direct_endings: Array = []
+
+func _run_super_over_direct_test() -> void:
+	_direct_test_active = true
+	_direct_stage = 0
+	_direct_endings = []
+	_engine.fast_forward = true
+	_engine.human_side = null
+
+# Driven from _on_frame; each stage runs once, engine flow continues async.
+# NOTE: after kicking the tie, setup assertions run on the NEXT frame —
+# observing engine state across a frame boundary is the only reliable way
+# to read it (the shootout's first mini-innings keeps round/maxw/sides
+# stable until it completes).
+func _drive_direct_test() -> void:
+	var gm = root.get_node("GameManager")
+	if _direct_stage == 0:
+		# Build a tied main match: A 49/5 in 20, B 49/5 in 20 (target 50).
+		var A = gm.all_teams[0]
+		var B = gm.all_teams[1]
+		gm.start_new_match(A, B, 0)
+		gm.state["total_runs"] = 49
+		gm.state["total_wickets"] = 5
+		gm.state["current_over"] = 20
+		gm.swap_innings()  # target = 50
+		gm.state["total_runs"] = 49
+		gm.state["total_wickets"] = 5
+		gm.state["current_over"] = 20
+		gm.state["current_ball"] = 0
+		_engine._end_innings()  # tie branch -> super-over round 1
+		_direct_stage = 1
+	elif _direct_stage == 1:
+		# The shootout's first mini-innings is now live: setup must read
+		# round 1, 1-over/2-wicket caps, DEATH phase, snapshots, chaser batting.
+		if gm.state.get("super_over", false) != true:
+			_failures.append("SO: super_over flag not set after tie")
+			_direct_stage = 99
+			return
+		if int(gm.state.get("super_over_round", 0)) != 1:
+			_failures.append("SO: expected round 1, got %s" % str(gm.state.get("super_over_round")))
+			_direct_stage = 99
+			return
+		if int(gm.state.get("max_overs", 0)) != 1:
+			_failures.append("SO: max_overs not 1 (got %s)" % str(gm.state.get("max_overs")))
+		if int(gm.state.get("max_wickets", 0)) != 2:
+			_failures.append("SO: max_wickets not 2 (got %s)" % str(gm.state.get("max_wickets")))
+		if gm.state.get("phase", -1) != _const.MatchPhase.DEATH:
+			_failures.append("SO: phase not DEATH")
+		# Shootout reviews start at 1/1 but may already be consumed mid-shootout;
+		# they must never go negative or exceed the allocation.
+		if int(gm.drs_reviews_batting) < 0 or int(gm.drs_reviews_batting) > 1 \
+				or int(gm.drs_reviews_bowling) < 0 or int(gm.drs_reviews_bowling) > 1:
+			_failures.append("SO: DRS reviews out of shootout bounds")
+		var mains: Array = gm.super_over_scorecards
+		if mains.size() != 2:
+			_failures.append("SO: expected 2 snapshotted main innings, got %d" % mains.size())
+		else:
+			if mains[0].get("team_name", "") != gm.all_teams[0].team_name or int(mains[0].get("total_runs", -1)) != 49:
+				_failures.append("SO: main innings snapshot 1 wrong: %s" % [mains[0]])
+			if mains[1].get("team_name", "") != gm.all_teams[1].team_name or int(mains[1].get("total_runs", -1)) != 49:
+				_failures.append("SO: main innings snapshot 2 wrong: %s" % [mains[1]])
+		if gm.state.get("so_first_batting", "") != gm.all_teams[1].team_name and int(gm.state.get("super_over_round", 0)) == 1:
+			# Round 1: the main-match chaser (B) must bat first in the shootout.
+			_failures.append("SO: chaser (B) should bat first in the shootout")
+		_direct_stage = 2
+	elif _direct_stage == 2:
+		# Wait for the (real, 1-over) super-over match to complete.
+		if _direct_endings.is_empty():
+			return
+		var gm2 = root.get_node("GameManager")
+		var sc = gm2._build_scorecard()
+		var winner: String = _direct_endings[_direct_endings.size() - 1]
+		if winner != gm2.all_teams[0].team_name and winner != gm2.all_teams[1].team_name:
+			_failures.append("SO: winner %s not one of the two sides" % winner)
+		if sc.get("super_over", false) != true:
+			_failures.append("SO: final scorecard missing super_over flag")
+		var mains2: Array = sc.get("main_innings", [])
+		if mains2.size() != 2:
+			_failures.append("SO: final scorecard missing main innings")
+		# NRR helper resolves to the fabricated 49/49 main-match figures.
+		var tm = root.get_node("TournamentManager")
+		var pair: Array = tm.nrr_innings(sc, gm2.first_innings_scorecard, winner)
+		var payload: Dictionary = tm.nrr_payload(pair[0], pair[1])
+		if int(payload.get("winner_runs", -1)) != 49 or int(payload.get("loser_runs", -1)) != 49:
+			_failures.append("SO: NRR payload not the 49/49 main figures: %s" % [payload])
+		print("[so] super-over resolved: winner=%s rounds=%s" % [winner, str(gm2.state.get("super_over_round", 0))])
+		_direct_test_active = false
 		_begin_tournament_phase()
 
 # ─── Tournament unit test: full auto-sim World Cup ───
@@ -326,6 +429,7 @@ func _play_next_tour_fixture(tm: Node) -> void:
 			if played_total < 24:  # 12 group games = 24 team-appearances
 				_failures.append("tour: too few matches recorded (%d team-appearances)" % played_total)
 			print("[tour] champion: %s | team-appearances: %d" % [tm.champion, played_total])
+			_test_xi_persistence(tm, gm)
 			_tour_kind = "done"
 			_engine.fast_forward = false
 			tm.abandon()
@@ -338,23 +442,59 @@ func _overs_float(state: Dictionary) -> float:
 	# Overs as float: completed overs + balls/6
 	return float(state.get("current_over", 0)) + float(state.get("current_ball", 0)) / 6.0
 
+# XI persistence: custom XI survives save/load; invalid XIs are rejected.
+func _test_xi_persistence(tm: Node, gm: Node) -> void:
+	var team = gm.all_teams[0]
+	# Build a custom XI: squad indices 2..12 (11 players, includes bowlers).
+	# slice() on a typed array preserves the type.
+	var custom: Array = team.squad.slice(2, 13)
+	var problems: Array = team.validate_xi(custom)
+	if not problems.is_empty():
+		_failures.append("XI: valid custom XI rejected: %s" % [problems])
+		return
+	var apply_problems: Array = team.set_playing_xi(custom)
+	if not apply_problems.is_empty():
+		_failures.append("XI: set_playing_xi failed: %s" % [apply_problems])
+		return
+	# Invalid XI must be rejected, original XI kept.
+	var short: Array = team.squad.slice(0, 10)
+	if team.validate_xi(short).is_empty():
+		_failures.append("XI: 10-player XI accepted (should be rejected)")
+	if team.playing_xi.size() != 11:
+		_failures.append("XI: playing_xi corrupted by rejected set")
+	# Round-trip through the real tournament save.
+	tm.save()
+	var expected: Array = []
+	for p in team.playing_xi:
+		expected.append(p.player_name)
+	# Clobber locally to prove the load restores it.
+	team.playing_xi.clear()
+	for i in range(11):
+		team.playing_xi.append(team.squad[i])
+	if not tm.load_saved():
+		_failures.append("XI: load_saved failed during XI round-trip")
+		return
+	var got: Array = []
+	for p in team.playing_xi:
+		got.append(p.player_name)
+	if got != expected:
+		_failures.append("XI: round-trip mismatch: %s vs %s" % [got, expected])
+	print("[xi] persistence round-trip OK (%d players)" % got.size())
+
 # Records a finished tournament fixture; the next one is started by _on_frame.
 func _on_tour_match_ended(winner: String) -> void:
 	if not _tournament_phase:
 		return
 	var tm = root.get_node("TournamentManager")
 	var gm = root.get_node("GameManager")
+	var sc = gm._build_scorecard()
 	var first = gm.first_innings_scorecard
 	if _tour_kind == "group":
 		var f = _tour_fixtures[_tour_idx]
 		if winner != f["home"] and winner != f["away"]:
 			_failures.append("tour: winner %s not one of the fixture teams" % winner)
-		tm.record_result(f["home"], f["away"], winner, {
-			"winner_runs": gm.state.get("total_runs", 0),
-			"winner_overs": _overs_float(gm.state),
-			"loser_runs": first.get("total_runs", 0),
-			"loser_overs": _overs_from_string(first.get("total_overs", "0.0")),
-		})
+		var innings: Array = tm.nrr_innings(sc, first, winner)
+		tm.record_result(f["home"], f["away"], winner, tm.nrr_payload(innings[0], innings[1]))
 		_tour_idx += 1
 	elif _tour_kind == "semi":
 		var s = tm.semis[_tour_idx]

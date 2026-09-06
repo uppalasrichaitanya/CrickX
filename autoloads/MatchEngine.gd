@@ -12,6 +12,7 @@ signal request_bowl_selection()
 signal request_drs_review(wicket_type: String, reviews_left: int)
 signal delivery_incoming(delivery_name: String)
 signal delivery_thrown(delivery_type: int)
+signal super_over_starting(round_no: int)
 signal second_innings_starting()
 
 enum State { IDLE, BOWLING_APPROACH, WAITING_FOR_SHOT, WAITING_FOR_BOWL, SIMULATING, SHOWING_RESULT, WAITING_FOR_REVIEW, END_OF_OVER, END_OF_INNINGS, MATCH_OVER }
@@ -66,7 +67,7 @@ func start_match(team_a: TeamData, team_b: TeamData, format: int,
 	_prev_bowler = null
 	_hat_trick_ball = false
 	for t in [team_a, team_b]:
-		for p in t.playing_xi:
+		for p in t.squad:
 			p.set_meta("wicket_ledger", [])
 	simulator.ai_controller.set_difficulty(GameManager.difficulty)
 	runs_this_over = 0
@@ -282,8 +283,8 @@ func _finalize_wicket(outcome: Dictionary, wtype: String) -> void:
 	if _hat_trick_ball:
 		outcome["hat_trick_completed"] = true
 	
-	# Check all out
-	if GameManager.state["total_wickets"] >= Constants.MAX_WICKETS:
+	# Check all out (per-innings wicket cap — 2 in a super over)
+	if GameManager.state["total_wickets"] >= int(GameManager.state.get("max_wickets", Constants.MAX_WICKETS)):
 		_end_innings()
 		return
 	
@@ -462,6 +463,9 @@ func _end_innings() -> void:
 		if gen != _match_gen:
 			return
 		GameManager.swap_innings()
+		if GameManager.state.get("super_over", false):
+			# Super-over chase: death-phase batting, captain's shootout rules.
+			GameManager.state["phase"] = Constants.MatchPhase.DEATH
 		# Second innings: roles re-derive from the human's team.
 		_apply_roles()
 		runs_this_over = 0
@@ -469,19 +473,50 @@ func _end_innings() -> void:
 		balls_this_over_log = []
 		_prev_bowler = null
 		_hat_trick_ball = false
-		for p in GameManager.bowling_team.playing_xi:
+		for p in GameManager.bowling_team.squad:
 			p.set_meta("wicket_ledger", [])
 		_begin_ball(gen)
 	else:
-		# Match over
-		var winner = ""
+		# Match over — unless scores are level in a T20 (super over time).
 		var bat_runs = GameManager.state["total_runs"]
 		var target = GameManager.state["target"]
+		var is_t20 = GameManager.state["format"] == Constants.MatchFormat.T20
+		var in_shootout = GameManager.state.get("super_over", false)
+		if bat_runs == target - 1 and is_t20 and not in_shootout:
+			# LEVEL — first super-over round; the chaser bats first (no swap).
+			_start_super_over_round(gen)
+			return
+		if bat_runs == target - 1 and is_t20 and in_shootout:
+			# Tied again — swap sides so the other team bats first next round.
+			var tmp = GameManager.batting_team
+			GameManager.batting_team = GameManager.bowling_team
+			GameManager.bowling_team = tmp
+			_start_super_over_round(gen)
+			return
+		var winner = ""
 		if bat_runs >= target:
 			winner = GameManager.batting_team.team_name
 		else:
 			winner = GameManager.bowling_team.team_name
 		_end_match(winner)
+
+# Begins one super-over round (both mini-innings flow through the normal loop).
+func _start_super_over_round(gen: int) -> void:
+	current_state = State.END_OF_INNINGS
+	GameManager.start_super_over()
+	_apply_roles()
+	runs_this_over = 0
+	wickets_this_over = 0
+	balls_this_over_log = []
+	_prev_bowler = null
+	_hat_trick_ball = false
+	for p in GameManager.bowling_team.squad:
+		p.set_meta("wicket_ledger", [])
+	super_over_starting.emit(int(GameManager.state.get("super_over_round", 1)))
+	await _wait(2.0)
+	if gen != _match_gen:
+		return
+	_begin_ball(gen)
 
 func _end_match(winner: String) -> void:
 	current_state = State.MATCH_OVER

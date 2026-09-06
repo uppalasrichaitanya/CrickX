@@ -20,8 +20,18 @@ jobs:
           mv Godot_v4.2.2-stable_linux.x86_64 godot
           chmod +x godot
 
-      - name: Import project (editor pass — surfaces script/parse errors)
-        run: ./godot --headless --editor --path . --quit || true
+      - name: Warm up import cache (cold .godot misses class names on first pass)
+        run: ./godot --headless --editor --path . --quit > /dev/null 2>&1 || true
 
-      - name: Run headless smoke test (6 full matches + DRS unit checks)
+      - name: Import project (editor pass — fails on script/parse errors)
+        run: |
+          ./godot --headless --editor --path . --quit > import.log 2>&1 || true
+          if grep -q "SCRIPT ERROR" import.log; then
+            echo "--- script errors found during import ---"
+            grep "SCRIPT ERROR" import.log
+            exit 1
+          fi
+          echo "import clean"
+
+      - name: Run headless smoke test (8 matches + DRS unit + super over + full tournament)
         run: ./godot --headless --path . -s res://tests/smoke_test.gd

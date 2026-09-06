@@ -129,6 +129,36 @@ func _build_scorecard() -> void:
 					str(snapped(b.get("economy", 0.0), 0.01)), false
 				)
 
+	# MAIN MATCH section for shootout-decided games (super-over runs excluded)
+	if scorecard.get("super_over", false) and winner != "":
+		var main_innings = scorecard.get("main_innings", [])
+		if main_innings.size() >= 2:
+			_render_mini_innings("MAIN MATCH — 1ST INNINGS", main_innings[0])
+			_render_mini_innings("MAIN MATCH — 2ND INNINGS", main_innings[1])
+
+func _render_mini_innings(header: String, inn: Dictionary) -> void:
+	_add_separator()
+	_add_separator()
+	_add_header(header + " — " + inn.get("team_name", ""))
+	_add_row("Batsman", "Dismissal", "R", "B", "4s", "6s", "SR", true)
+	for b in inn.get("batsmen", []):
+		var dismissal = b.get("dismissal", "")
+		if not b.get("is_out", false) and b.get("balls", 0) > 0:
+			dismissal = "not out"
+		elif not b.get("is_out", false):
+			dismissal = "DNB"
+		_add_row(
+			b.get("name", ""), dismissal,
+			str(b.get("runs", 0)), str(b.get("balls", 0)),
+			str(b.get("fours", 0)), str(b.get("sixes", 0)),
+			str(snapped(b.get("sr", 0.0), 0.1)), false
+		)
+	var ex = inn.get("extras", {})
+	_add_text("Extras: " + str(ex.get("wides", 0) + ex.get("no_balls", 0) + ex.get("byes", 0)) +
+		" (w:" + str(ex.get("wides", 0)) + " nb:" + str(ex.get("no_balls", 0)) + ")")
+	_add_text("Total: " + str(inn.get("total_runs", 0)) + "/" + str(inn.get("total_wickets", 0)) +
+		" (" + str(inn.get("total_overs", "0.0")) + " ov)")
+
 func _add_header(text: String) -> void:
 	var lbl = Label.new()
 	lbl.text = text

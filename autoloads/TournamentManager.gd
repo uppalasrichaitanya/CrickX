@@ -235,6 +235,7 @@ func save() -> void:
 			"rf": t.total_runs_scored_tournament, "of": t.total_overs_faced_tournament,
 			"ra": t.total_runs_conceded_tournament, "ob": t.total_overs_bowled_tournament,
 			"nrr": t.nrr,
+			"xi": t.playing_xi.map(func(p): return p.player_name),
 		}),
 	})
 
@@ -273,6 +274,19 @@ func load_saved() -> bool:
 			t.total_runs_conceded_tournament = int(ts.get("ra", 0))
 			t.total_overs_bowled_tournament = float(ts.get("ob", 0.0))
 			t.nrr = float(ts.get("nrr", 0.0))
+			# Rehydrate the custom XI (falls back to default XI on bad data)
+			var by_name := {}
+			for p in t.squad:
+				by_name[p.player_name] = p
+			var xi_names: Array = ts.get("xi", [])
+			var xi: Array[PlayerData] = []
+			for n in xi_names:
+				if by_name.has(n):
+					var pd := by_name[n] as PlayerData
+					if pd != null:
+						xi.append(pd)
+			if xi.size() == 11:
+				t.set_playing_xi(xi)
 	return is_active() or stage == Stage.DONE
 
 func has_save() -> bool:
@@ -295,3 +309,39 @@ func stage_label() -> String:
 		Stage.FINAL: return "FINAL"
 		Stage.DONE: return "COMPLETE"
 	return ""
+
+# Parses cricket over notation ("18.3" = 18 overs + 3 balls) into float overs.
+static func overs_to_float(over_string: String) -> float:
+	var parts = over_string.split(".")
+	if parts.size() == 2:
+		return float(parts[0]) + float(parts[1]) / 6.0
+	return 0.0
+
+# Builds the {winner_runs, winner_overs, loser_runs, loser_overs} payload for
+# record_result from the WINNER's and LOSER's innings scorecards.
+# All-out sides count the full quota faced (standard NRR rule).
+static func nrr_payload(winner_sc: Dictionary, loser_sc: Dictionary) -> Dictionary:
+	var w_overs := overs_to_float(winner_sc.get("total_overs", "0.0"))
+	var l_overs := overs_to_float(loser_sc.get("total_overs", "0.0"))
+	if int(winner_sc.get("total_wickets", 0)) >= 10 and w_overs < 20.0:
+		w_overs = 20.0
+	if int(loser_sc.get("total_wickets", 0)) >= 10 and l_overs < 20.0:
+		l_overs = 20.0
+	return {
+		"winner_runs": int(winner_sc.get("total_runs", 0)),
+		"winner_overs": w_overs,
+		"loser_runs": int(loser_sc.get("total_runs", 0)),
+		"loser_overs": l_overs,
+	}
+
+# Picks the correct innings scorecards for NRR recording from a finished-match
+# scorecard: for super-over games, the MAIN-match innings (shootout runs never
+# count toward Net Run Rate). Returns [winner_sc, loser_sc].
+static func nrr_innings(sc: Dictionary, first_sc: Dictionary, winner: String) -> Array:
+	if sc.get("super_over", false):
+		var mains: Array = sc.get("main_innings", [])
+		if mains.size() >= 2:
+			var wsc = mains[0] if winner == mains[0].get("team_name", "") else mains[1]
+			var lsc = mains[1] if winner == mains[0].get("team_name", "") else mains[0]
+			return [wsc, lsc]
+	return [sc, first_sc] if winner == sc.get("team_name", "") else [first_sc, sc]

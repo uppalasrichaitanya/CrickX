@@ -222,7 +222,8 @@ func _resolve_outcome(batsman: PlayerData, bowler: PlayerData,
 		var wtype = _determine_wicket_type(delivery_type, shot_type)
 		# Caught chances are contested by a real fielder — can be dropped.
 		if wtype in ["CAUGHT", "CAUGHT_BEHIND"]:
-			var fielded = _resolve_catch(wtype, batsman, bowler, shot_type, delivery_type, fielding_team)
+			var fielded = _resolve_catch(wtype, batsman, bowler, shot_type, delivery_type,
+				fielding_team, game_state.get("phase", 1))
 			if not fielded.is_empty():
 				return fielded
 			# Dropped! Safe runs instead — costly miss.
@@ -294,7 +295,7 @@ var _last_fielder_name: String = ""
 # Returns a wicket outcome Dictionary if the catch is held; an EMPTY Dictionary
 # means dropped (the caller converts it into safe runs).
 func _resolve_catch(wtype: String, batsman: PlayerData, bowler: PlayerData,
-		shot: int, delivery: int, fielding_team: TeamData) -> Dictionary:
+		shot: int, delivery: int, fielding_team: TeamData, phase: int = 1) -> Dictionary:
 	# Pick a fielder (exclude the bowler — he already did his job)
 	var fielder: PlayerData = null
 	if fielding_team != null and fielding_team.playing_xi.size() > 1:
@@ -305,8 +306,10 @@ func _resolve_catch(wtype: String, batsman: PlayerData, bowler: PlayerData,
 		if candidates.size() > 0:
 			fielder = candidates[_rng.randi_range(0, candidates.size() - 1)]
 
-	# Catch probability from the fielder's skill (and the take has to be clean)
+	# Catch probability from the fielder's skill (and the take has to be clean).
+	# Field settings matter: the ring is up in the powerplay, spread at the death.
 	var hold_chance = Constants.CATCH_BASE_CHANCE
+	hold_chance += float(Constants.CATCH_PHASE_MOD.get(phase, 0.0))
 	if fielder != null:
 		hold_chance += (float(fielder.fielding_skill) - 60.0) * Constants.CATCH_SKILL_WEIGHT
 		_last_fielder_name = fielder.player_name

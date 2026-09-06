@@ -35,6 +35,59 @@ var extras: Dictionary = { "wides": 0, "no_balls": 0, "byes": 0, "leg_byes": 0 }
 
 # ─── Second innings tracking ───
 var first_innings_scorecard: Dictionary = {}
+# Main-match scorecards, snapshotted when a super over begins (for display
+# and NRR — super-over runs never count toward Net Run Rate).
+var super_over_scorecards: Array = []
+
+func start_super_over() -> void:
+	# Snapshot the main match exactly once (first super-over round).
+	if super_over_scorecards.is_empty():
+		super_over_scorecards = [first_innings_scorecard.duplicate(true), _build_scorecard()]
+	
+	var round_no: int = int(state.get("super_over_round", 0)) + 1
+	state["super_over"] = true
+	state["super_over_round"] = round_no
+	# Who bats first this round (stable for assertions + HUD text).
+	state["so_first_batting"] = batting_team.team_name
+	state["max_overs"] = 1
+	state["max_wickets"] = 2
+	state["is_first_innings"] = true
+	state["phase"] = Constants.MatchPhase.DEATH
+	state["current_over"] = 0
+	state["current_ball"] = 0
+	state["total_runs"] = 0
+	state["total_wickets"] = 0
+	state["target"] = 0
+	
+	# Sides stay as they are: the main-match chaser bats first in the shootout.
+	batting_team.reset_match_stats()
+	bowling_team.reset_match_stats()
+	
+	# One DRS review per side, like a real shootout
+	drs_reviews_batting = 1
+	drs_reviews_bowling = 1
+	
+	batting_order_index = 2
+	striker = batting_team.playing_xi[0]
+	non_striker = batting_team.playing_xi[1]
+	striker.is_on_strike = true
+	
+	var bowlers = bowling_team.get_bowlers()
+	if bowlers.size() > 0:
+		current_bowler = bowlers[0]
+	
+	fall_of_wickets = []
+	this_over_balls = []
+	all_overs = []
+	extras = { "wides": 0, "no_balls": 0, "byes": 0, "leg_byes": 0 }
+	partnership_start_runs = 0
+	pitch_wear = 0.0
+	batting_pressure = 0.0
+
+func clear_super_over() -> void:
+	super_over_scorecards = []
+	state["super_over"] = false
+	state["super_over_round"] = 0
 var partnership_start_runs: int = 0  # Total runs at the start of the current partnership
 
 # ─── Settings ───
@@ -79,9 +132,12 @@ func start_new_match(team_a: TeamData, team_b: TeamData, format: int) -> void:
 		"total_wickets": 0,
 		"target": 0,
 		"max_overs": max_overs,
+		"max_wickets": Constants.MAX_WICKETS,
 		"format": format,
 		"phase": Constants.MatchPhase.POWERPLAY,
 		"is_first_innings": true,
+		"super_over": false,
+		"super_over_round": 0,
 		"pitch_type": pitch_type,
 		"weather": weather,
 	}
@@ -111,6 +167,7 @@ func start_new_match(team_a: TeamData, team_b: TeamData, format: int) -> void:
 	all_overs = []
 	extras = { "wides": 0, "no_balls": 0, "byes": 0, "leg_byes": 0 }
 	first_innings_scorecard = {}
+	clear_super_over()
 	partnership_start_runs = 0
 	pitch_wear = 0.0
 	batting_pressure = 0.0
@@ -152,6 +209,10 @@ func get_partnership_runs() -> int:
 	return state["total_runs"] - partnership_start_runs
 
 func update_phase() -> void:
+	# A super over is death-phase batting from first ball to last.
+	if state.get("super_over", false):
+		state["phase"] = Constants.MatchPhase.DEATH
+		return
 	var overs = state["current_over"]
 	if state["format"] == Constants.MatchFormat.T20:
 		if overs < 6:
@@ -184,8 +245,10 @@ func next_batsman() -> PlayerData:
 	return next
 
 func swap_innings() -> void:
-	# Store first innings scorecard
-	first_innings_scorecard = _build_scorecard()
+	# Store first innings scorecard (never clobber during a super over —
+	# the main-match scorecards live in super_over_scorecards then).
+	if not state.get("super_over", false):
+		first_innings_scorecard = _build_scorecard()
 	
 	# Set target
 	state["target"] = state["total_runs"] + 1
@@ -206,6 +269,9 @@ func swap_innings() -> void:
 	state["total_wickets"] = 0
 	state["is_first_innings"] = false
 	state["phase"] = Constants.MatchPhase.POWERPLAY
+	# A super-over chase keeps the shootout's 2-wicket cap.
+	if not state.get("super_over", false):
+		state["max_wickets"] = Constants.MAX_WICKETS
 	
 	# DRS reset
 	if state["format"] == Constants.MatchFormat.T20:
@@ -233,7 +299,7 @@ func swap_innings() -> void:
 	batting_pressure = 0.0
 
 func _build_scorecard() -> Dictionary:
-	return {
+	var sc := {
 		"team_name": batting_team.team_name,
 		"total_runs": state["total_runs"],
 		"total_wickets": state["total_wickets"],
@@ -243,6 +309,12 @@ func _build_scorecard() -> Dictionary:
 		"bowlers": _get_bowler_stats(),
 		"fall_of_wickets": fall_of_wickets.duplicate(),
 	}
+	if state.get("super_over", false):
+		# Shootout context: keep the main-match innings for NRR + display.
+		sc["super_over"] = true
+		sc["super_over_round"] = state.get("super_over_round", 1)
+		sc["main_innings"] = super_over_scorecards.duplicate(true)
+	return sc
 
 func _get_batsmen_stats() -> Array:
 	var stats = []

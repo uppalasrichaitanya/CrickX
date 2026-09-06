@@ -24,6 +24,9 @@
 - **Tournament Mode**: World Cup style — 2 groups of 4, a live points table with Net Run Rate tie-breaks, semi finals and a final. Play your team's fixtures (with a real coin toss — win it and choose to bat or bowl), and auto-sim the rest. Tournaments autosave and can be resumed. Squads of 15 per team.
 - **Fast Forward**: Collapse the waits between balls to auto-sim quickly at any time.
 - **Realistic Squads**: Fully fleshed-out T20 squads (8 international teams) with individual player stats for batting, bowling, fielding, and styles.
+- **XI Selection**: Pick your playing XI from the 15-man squad before a match (or anytime from the tournament Hub) — order sets the batting order, with live validation.
+- **Super Overs**: Level scores in T20s go to a sudden-death shootout — 1 over per side, 2 wickets, chaser bats first, repeating until decided. Shootout runs never touch NRR.
+- **Phase-Aware Fielding**: The field view re-sets between powerplay (catchers up), middle overs, and death (boundary riders) — and the sim agrees, with catch chances shifting by phase.
 
 ## 🛠️ Technology Stack
 
@@ -60,19 +63,19 @@ The game's architecture heavily utilizes the **Autoload pattern** to manage stat
 
 1. Run the project from the Godot editor (`F5`).
 2. Navigate through the **Main Menu** to select **Play Quick Match**.
-3. Choose your teams, the match format (T20 or ODI), and the mode (Bat vs AI, or Full Match) in the **Team Select** screen.
+3. Choose your teams, the match format (T20 or ODI), and the mode (Bat vs AI, or Full Match) in the **Team Select** screen — then pick your **playing XI** from the 15-man squad.
 4. During your batting innings, watch for the **Delivery Alert** (e.g., `"🏏 YORKER!"`).
 5. You have a **4-second reaction window** to select your shot from the UI grid or keys **1-6**.
 6. On a reviewable dismissal (LBW/caught), you get a **5-second window** to call for a **DRS review**.
 7. In Full Match mode, pick each delivery (keys 1-4) as you bowl the second innings.
-8. Watch the **field view** react to every ball — boundaries race to the rope, sixes clear it, and wickets shatter the stumps. Toggle **🧭** for the wagon wheel of every shot so far.
+8. Watch the **field view** react to every ball — boundaries race to the rope, sixes clear it, and wickets shatter the stumps. Toggle **🧭** for the wagon wheel of every shot so far. If scores finish level in a T20, hold on for the **super over**.
 9. Use **⏩** in the status bar to fast-forward at any time.
-10. For a campaign, start a **Tournament** from the main menu: pick your nation, win the toss, and chase the cup through groups, semis, and the final — the standings, NRR, and fixtures are tracked for you.
+10. For a campaign, start a **Tournament** from the main menu: pick your nation (and your XI), win the toss, and chase the cup through groups, semis, and the final — the standings, NRR, and fixtures are tracked for you.
 11. Manage your pressure, observe the pitch/weather conditions, and lead your team to victory!
 
 ## 🧪 Testing
 
-A headless smoke test plays eight full matches through the real engine (T20/ODI, fast-forward, both toss orientations, human bowling) and runs a complete auto-simulated tournament with a save/load round-trip, plus DRS unit checks:
+A headless smoke test plays eight full matches through the real engine (T20/ODI, fast-forward, both toss orientations, human bowling), runs a synthetic super-over shootout plus a complete auto-simulated tournament with save/load and XI round-trips, plus DRS unit checks:
 
 ```bash
 Godot_v4.2.2-stable_win64_console.exe --headless --path . -s res://tests/smoke_test.gd

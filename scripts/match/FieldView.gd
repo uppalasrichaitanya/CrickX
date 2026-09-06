@@ -215,22 +215,35 @@ func _reset_positions() -> void:
 	keeper_m.position = BAT_END + Vector2(0, 26)
 	ball.position = bowler_m.position
 	ball_shadow.position = ball.position
-	_place_fielders()
+	_place_fielders(false)
 
-# Standard-ish field for the 9 outfield fielders mapped onto zones
-# (keeper and bowler are separate markers).
-func _place_fielders() -> void:
-	var zones := [Constants.FieldZone.MID_ON, Constants.FieldZone.LONG_ON, Constants.FieldZone.MID_WICKET,
-		Constants.FieldZone.SQUARE_LEG, Constants.FieldZone.FINE_LEG, Constants.FieldZone.MID_OFF,
-		Constants.FieldZone.COVER, Constants.FieldZone.POINT, Constants.FieldZone.LONG_ON]
-	var t := 0.62
+# Standard field mapped onto zones; layout shifts with the match phase
+# (ring in the powerplay, boundary riders at the death).
+var current_phase: int = 1  # Constants.MatchPhase.MIDDLE
+var _field_tweens: Array = []
+
+func set_phase(phase: int) -> void:
+	if phase != current_phase:
+		current_phase = phase
+		_place_fielders(true)
+
+func _place_fielders(animate: bool = false) -> void:
+	var layout: Array = Constants.PHASE_FIELD_LAYOUTS.get(current_phase,
+		Constants.PHASE_FIELD_LAYOUTS[Constants.MatchPhase.MIDDLE])
+	for tw in _field_tweens:
+		if tw != null and tw.is_valid():
+			tw.kill()
+	_field_tweens.clear()
 	for i in range(fielders.size()):
-		if i < zones.size():
-			var base := zone_point(zones[i])
-			var depth := 0.55 if i < 6 else 0.9  # mix of ring and deep fielders
-			fielders[i].position = BAT_END + (base - BAT_END) * depth
+		var slot: Dictionary = layout[i % layout.size()]
+		var base := zone_point(int(slot["zone"]))
+		var target := BAT_END + (base - BAT_END) * float(slot["depth"])
+		if animate:
+			var tw := create_tween()
+			tw.tween_property(fielders[i], "position", target, 0.7 * _speed_scale())
+			_field_tweens.append(tw)
 		else:
-			fielders[i].position = zone_point(Constants.FieldZone.COVER) * 0.5
+			fielders[i].position = target
 
 func _nearest_fielder_to(p: Vector2) -> Node2D:
 	var best: Node2D = null

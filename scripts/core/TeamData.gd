@@ -30,8 +30,69 @@ func get_bowlers() -> Array[PlayerData]:
 			bowlers.append(p)
 	return bowlers
 
+# Sets a custom playing XI (e.g., from the squad picker). Returns the list of
+# problems found; empty means valid. Order = batting order.
+func set_playing_xi(players: Array[PlayerData]) -> Array[String]:
+	var problems := validate_xi(players)
+	if problems.is_empty():
+		playing_xi = players.duplicate()
+		reset_match_stats()
+	return problems
+
+# XI rules: exactly 11, unique squad members, at least one bowler.
+static func validate_xi(players: Array[PlayerData]) -> Array[String]:
+	var problems: Array[String] = []
+	if players.size() != 11:
+		problems.append("XI must have exactly 11 players (got %d)" % players.size())
+	var seen := {}
+	for p in players:
+		if p in seen:
+			problems.append("Duplicate player: %s" % p.player_name)
+		seen[p] = true
+	var has_bowler := false
+	for p in players:
+		if p.bowling_type != "NONE":
+			has_bowler = true
+			break
+	if not has_bowler:
+		problems.append("XI needs at least one bowler")
+	return problems
+
+# Repairs a broken XI by filling gaps from the squad: tops up to 11 in squad
+# order, then guarantees a bowler by swapping the last non-bowler if needed.
+func auto_repair_xi(players: Array[PlayerData]) -> Array[PlayerData]:
+	var fixed: Array[PlayerData] = []
+	var seen := {}
+	for p in players:
+		if p in squad and not (p in seen):
+			fixed.append(p)
+			seen[p] = true
+	for p in squad:
+		if fixed.size() >= 11:
+			break
+		if not (p in seen):
+			fixed.append(p)
+			seen[p] = true
+	if fixed.size() > 11:
+		fixed = fixed.slice(0, 11)
+	var has_bowler := false
+	for p in fixed:
+		if p.bowling_type != "NONE":
+			has_bowler = true
+			break
+	if not has_bowler:
+		for p in squad:
+			if p.bowling_type != "NONE" and p in fixed:
+				continue
+			if p.bowling_type != "NONE":
+				fixed[fixed.size() - 1] = p
+				break
+	return fixed
+
 func reset_match_stats() -> void:
-	for p in playing_xi:
+	# Reset the FULL squad (not just the XI) so benched players never carry
+	# stale per-match stats back into a later XI.
+	for p in squad:
 		p.reset_match_stats()
 
 func calculate_nrr() -> void:
