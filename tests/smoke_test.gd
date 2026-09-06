@@ -52,9 +52,13 @@ func _initialize() -> void:
 	_engine.request_shot_selection.connect(_on_request_shot)
 	_engine.request_bowl_selection.connect(_on_request_bowl)
 	_engine.request_drs_review.connect(_on_request_drs)
+	process_frame.connect(_on_frame)
+
+var _unit_done := false
+
+func _run_unit_tests() -> void:
 	_test_drs_directly()
 	_test_career()
-	process_frame.connect(_on_frame)
 
 func _on_request_shot(_name: String) -> void:
 	_shot_requests += 1
@@ -74,6 +78,9 @@ func _on_request_drs(_wtype: String, _left: int) -> void:
 	_engine.receive_drs_input(randi_range(0, 1) == 0)
 
 func _on_frame() -> void:
+	if not _unit_done:
+		_unit_done = true
+		_run_unit_tests()
 	if _tournament_phase:
 		if _tour_advance:
 			_tour_advance = false
@@ -356,6 +363,25 @@ func _drive_direct_test() -> void:
 
 # ─── Tournament unit test: full auto-sim World Cup ───
 var _tournament_phase: bool = false
+var _tour_save_backup: String = ""
+var _tour_had_save: bool = false
+
+func _backup_tournament_save() -> void:
+	_tour_had_save = FileAccess.file_exists("user://saves/tournament.json")
+	if _tour_had_save:
+		var f := FileAccess.open("user://saves/tournament.json", FileAccess.READ)
+		if f:
+			_tour_save_backup = f.get_as_text()
+			f.close()
+
+func _restore_tournament_save() -> void:
+	if _tour_had_save:
+		var f := FileAccess.open("user://saves/tournament.json", FileAccess.WRITE)
+		if f:
+			f.store_string(_tour_save_backup)
+			f.close()
+	elif FileAccess.file_exists("user://saves/tournament.json"):
+		DirAccess.remove_absolute("user://saves/tournament.json")
 var _tour_fixtures: Array = []
 var _tour_idx: int = 0
 var _tour_kind: String = "group"
@@ -363,6 +389,7 @@ var _tour_advance: bool = false
 
 func _begin_tournament_phase() -> void:
 	_tournament_phase = true
+	_backup_tournament_save()
 	var tm = root.get_node("TournamentManager")
 	var gm = root.get_node("GameManager")
 	_engine.fast_forward = true
@@ -445,9 +472,11 @@ func _play_next_tour_fixture(tm: Node) -> void:
 				_failures.append("tour: too few matches recorded (%d team-appearances)" % played_total)
 			print("[tour] champion: %s | team-appearances: %d" % [tm.champion, played_total])
 			_test_xi_persistence(tm, gm)
+			await _test_sim_super_over(tm, gm)
 			_tour_kind = "done"
 			_engine.fast_forward = false
 			tm.abandon()
+			_restore_tournament_save()
 			_engine.match_ended_signal.disconnect(_on_tour_match_ended)
 			_finish()
 			return
@@ -456,6 +485,31 @@ func _play_next_tour_fixture(tm: Node) -> void:
 func _overs_float(state: Dictionary) -> float:
 	# Overs as float: completed overs + balls/6
 	return float(state.get("current_over", 0)) + float(state.get("current_ball", 0)) / 6.0
+
+# Sim-shootout unit check: real BallSimulator super overs decide ties with
+# no side effects on players or GameManager globals.
+func _test_sim_super_over(tm: Node, gm: Node) -> void:
+	var hub = load("res://scenes/ui/TournamentHub.tscn").instantiate()
+	root.add_child(hub)
+	await process_frame
+	var home = gm.all_teams[2]
+	var away = gm.all_teams[3]
+	var pre_fatigue: float = home.playing_xi[0].fatigue
+	var pre_momentum: float = gm.momentum
+	var pre_wear: float = gm.pitch_wear
+	var seen := {}
+	for i in range(5):
+		var w: String = hub._sim_super_over(home, away)
+		if w != home.team_name and w != away.team_name:
+			_failures.append("simso: invalid winner %s" % w)
+		seen[w] = true
+	if home.playing_xi[0].fatigue != pre_fatigue:
+		_failures.append("simso: player fatigue leaked from sim shootout")
+	if gm.momentum != pre_momentum or gm.pitch_wear != pre_wear:
+		_failures.append("simso: GameManager globals leaked from sim shootout")
+	print("[simso] 5 shootouts done, winners seen: %s" % [seen.keys()])
+	hub.queue_free()
+	await process_frame
 
 # XI persistence: custom XI survives save/load; invalid XIs are rejected.
 func _test_xi_persistence(tm: Node, gm: Node) -> void:

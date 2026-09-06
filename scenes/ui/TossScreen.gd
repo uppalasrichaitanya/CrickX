@@ -27,7 +27,16 @@ func _ready() -> void:
 	home = GameManager.get_meta("toss_home")
 	away = GameManager.get_meta("toss_away")
 	human = GameManager.get_meta("toss_human")
-	fixture_kind = GameManager.get_meta("toss_fixture")
+	if GameManager.has_meta("toss_fixture"):
+		fixture_kind = str(GameManager.get_meta("toss_fixture"))
+	if home == null or away == null:
+		# Opened outside the tournament flow — nothing to toss for.
+		lbl_home.text = "—"
+		lbl_away.text = "—"
+		lbl_result.text = "No fixture loaded."
+		btn_heads.disabled = true
+		btn_tails.disabled = true
+		return
 	
 	lbl_home.text = home.team_name
 	lbl_away.text = away.team_name

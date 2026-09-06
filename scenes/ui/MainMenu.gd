@@ -64,7 +64,7 @@ func _on_tournament() -> void:
 	_fade_to_scene("res://scenes/ui/TournamentHub.tscn")
 
 func _on_multiplayer() -> void:
-	pass  # Planned: LAN multiplayer (see implementation_plan.md Phase 5)
+	_fade_to_scene("res://scenes/ui/MultiplayerMenu.tscn")
 
 func _on_records() -> void:
 	_fade_to_scene("res://scenes/ui/CareerRecords.tscn")

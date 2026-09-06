@@ -24,7 +24,7 @@ points → NRR → wins tie-breaks, autosave/resume via `SaveManager`, quick
 statistical sim for AI fixtures, `TournamentHub` + `PointsTable` + `TossScreen` UI.
 15-player squads with XI selection persisted in the save.
 
-## Phase 5: LAN Multiplayer — IN PROGRESS
+## Phase 5: LAN Multiplayer — DONE
 `NetworkManager` ENet host/join with an authoritative host sim: the host runs
 `MatchEngine`, the client sends shot/bowl/DRS inputs via RPC and receives ball
 outcomes. Verified with a headless host+client loopback test.

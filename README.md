@@ -22,6 +22,8 @@
 - **Risk & Reward Batting**: Choose from various shot types (Defensive Block, Leave, Drive/Pull, Loft/Slog) with realistic risk profiles and boundary chances.
 - **Visual Match View**: A live top-down field renders every delivery and result — yorkers and bouncers, boundary ropes with chasing fielders, sixes sailing over the top, stump shatterings, dropped catches, plus a toggleable wagon wheel and milestone fireworks.
 - **Tournament Mode**: World Cup style — 2 groups of 4, a live points table with Net Run Rate tie-breaks, semi finals and a final. Play your team's fixtures (with a real coin toss — win it and choose to bat or bowl), and auto-sim the rest. Tournaments autosave and can be resumed. Squads of 15 per team.
+- **Multiplayer**: Hot-seat on one device (secret bowl lock-screen handoff) or **LAN play** — host runs the authoritative sim, the guest mirrors every ball and sends inputs back over ENet, with watchdog fallback so a dropped peer can't soft-lock the match.
+- **Career Records**: Persistent per-player aggregates across every match you play (runs, wickets, 50s/100s, best figures), with an all-time batting/bowling tables screen.
 - **Fast Forward**: Collapse the waits between balls to auto-sim quickly at any time.
 - **Realistic Squads**: Fully fleshed-out T20 squads (8 international teams) with individual player stats for batting, bowling, fielding, and styles.
 - **XI Selection**: Pick your playing XI from the 15-man squad before a match (or anytime from the tournament Hub) — order sets the batting order, with live validation.
@@ -62,8 +64,8 @@ The game's architecture heavily utilizes the **Autoload pattern** to manage stat
 ### How to Play
 
 1. Run the project from the Godot editor (`F5`).
-2. Navigate through the **Main Menu** to select **Play Quick Match**.
-3. Choose your teams, the match format (T20 or ODI), and the mode (Bat vs AI, or Full Match) in the **Team Select** screen — then pick your **playing XI** from the 15-man squad.
+2. Navigate through the **Main Menu** to select **Play Quick Match** — or **Multiplayer** for hot-seat (2 players, one device) or LAN (host/join over your network).
+3. Choose your teams, the match format (T20 or ODI), and the mode (Bat vs AI, Full Match, or Hot-Seat) in the **Team Select** screen — then pick your **playing XI** from the 15-man squad.
 4. During your batting innings, watch for the **Delivery Alert** (e.g., `"🏏 YORKER!"`).
 5. You have a **4-second reaction window** to select your shot from the UI grid or keys **1-6**.
 6. On a reviewable dismissal (LBW/caught), you get a **5-second window** to call for a **DRS review**.
@@ -75,10 +77,16 @@ The game's architecture heavily utilizes the **Autoload pattern** to manage stat
 
 ## 🧪 Testing
 
-A headless smoke test plays eight full matches through the real engine (T20/ODI, fast-forward, both toss orientations, human bowling), runs a synthetic super-over shootout plus a complete auto-simulated tournament with save/load and XI round-trips, plus DRS unit checks:
+A headless smoke test plays nine full matches through the real engine (T20/ODI, fast-forward, both toss orientations, human bowling, hot-seat), runs a synthetic super-over shootout plus a complete auto-simulated tournament with save/load and XI round-trips, plus DRS unit checks. A two-process LAN loopback test (host + client on localhost) verifies the authoritative-host protocol end to end:
 
 ```bash
 Godot_v4.2.2-stable_win64_console.exe --headless --path . -s res://tests/smoke_test.gd
+```
+
+```bash
+# LAN loopback (two processes; also runs in CI):
+Godot_v4.2.2-stable_win64_console.exe --headless --path . -s res://tests/net_host.gd -- --port=54123 &
+Godot_v4.2.2-stable_win64_console.exe --headless --path . -s res://tests/net_client.gd -- --port=54123
 ```
 
 Exit code 0 = all checks passed. This also runs in CI on every push.

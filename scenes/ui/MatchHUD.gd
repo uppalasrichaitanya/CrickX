@@ -89,6 +89,10 @@ var bowl_options: Array[int] = []
 var _pending_bowl: int = -1  # Hot-seat: locked-in delivery awaiting the handoff tap
 var _weather_pitch := WeatherPitchSystem.new()
 const DRS_REVIEW_WINDOW: float = 5.0
+# ─── Online client mode: mirror the host's events, send inputs back ───
+var net_mode: bool = false
+var _net_snap: Dictionary = {}
+var _match_done: bool = false
 
 func _ready() -> void:
 	modulate.a = 0.0
@@ -194,12 +198,124 @@ func _ready() -> void:
 	
 	_update_display()
 	
+	if NetworkManager.online and not NetworkManager.is_host:
+		_enter_net_mode()
+		return
+	if NetworkManager.online and NetworkManager.is_host:
+		NetworkManager.player_disconnected.connect(_on_peer_left)
+	
 	# Tell the engine our signal handlers are connected before it starts ball flow.
 	MatchEngine.note_hud_ready()
+
+func _enter_net_mode() -> void:
+	# Client mirrors the host: no local engine, inputs go back over RPC.
+	net_mode = true
+	NetworkManager.net_event.connect(_on_net_event)
+	NetworkManager.player_disconnected.connect(_on_peer_left)
+	AudioManager.start_ambient()
+	lbl_batting_team.text = "CONNECTING…"
+	lbl_score.text = ""
+	commentary_label.text = "Connected — waiting for the host to start…"
+	# Tell the host this HUD is ready to receive events.
+	NetworkManager.send_action({"kind": "ready", "value": 1})
 
 func _exit_tree() -> void:
 	if is_instance_valid(MatchEngine):
 		MatchEngine.note_hud_gone()
+	if net_mode:
+		AudioManager.stop_ambient()
+		if NetworkManager.online:
+			NetworkManager.disconnect_gracefully()
+	elif NetworkManager.online and NetworkManager.is_host:
+		# Host leaves the HUD only at match end — drop the session.
+		NetworkManager.disconnect_gracefully()
+
+# ─── Online client event handling ───
+func _on_net_event(event: Dictionary) -> void:
+	var snap: Dictionary = event.get("snapshot", {})
+	if not snap.is_empty():
+		_net_snap = snap
+		_update_display_net()
+	match event.get("type", ""):
+		"delivery":
+			field_view.set_phase(int(_net_snap.get("phase", 1)))
+			field_view.play_delivery(int(event.get("delivery_type", 0)))
+			_show_delivery_alert(event.get("delivery_name", "DELIVERY"))
+		"request_shot":
+			_show_shot_selection(event.get("delivery_name", "DELIVERY"))
+		"request_bowl":
+			_show_bowl_selection()
+		"request_drs":
+			_show_drs_review(event.get("wicket_type", "LBW"), int(event.get("reviews_left", 0)))
+		"ball":
+			_add_over_dot(event.get("outcome", {}))
+			_show_commentary(event.get("outcome", {}))
+			_on_field_outcome(event.get("outcome", {}))
+		"over":
+			_on_over_ended(event.get("summary", {}))
+		"innings_break":
+			_show_innings_break_net(int(event.get("target", 0)))
+		"super_over":
+			_on_super_over_for_field(int(event.get("round", 1)))
+		"match_end":
+			_on_net_match_end(event)
+
+func _on_peer_left(_id: int) -> void:
+	if _match_done:
+		return  # Match already over — the teardown disconnect is expected.
+	# Opponent dropped — show it, then head back to the menu.
+	innings_break_popup.visible = true
+	lbl_innings_break.text = "CONNECTION LOST\n\nThe other player disconnected."
+	await get_tree().create_timer(3.0).timeout
+	NetworkManager.disconnect_gracefully()
+	get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")
+
+func _update_display_net() -> void:
+	if _net_snap.is_empty():
+		return
+	var s := _net_snap
+	lbl_batting_team.text = s.get("batting_team", "")
+	lbl_score.text = str(s.get("total_runs", 0)) + "/" + str(s.get("total_wickets", 0))
+	lbl_overs.text = "(%d.%d)" % [int(s.get("current_over", 0)), int(s.get("current_ball", 0))]
+	lbl_format.text = "T20" if int(s.get("format", 0)) == Constants.MatchFormat.T20 else "ODI"
+	lbl_bowling_team.text = s.get("bowling_team", "")
+	
+	if not bool(s.get("is_first_innings", true)):
+		var needed = int(s.get("target", 0)) - int(s.get("total_runs", 0))
+		var balls_rem = (int(s.get("max_overs", 20)) * 6) - (int(s.get("current_over", 0)) * 6 + int(s.get("current_ball", 0)))
+		lbl_target_info.text = "Need: " + str(needed) + " off " + str(balls_rem) + " balls"
+	else:
+		lbl_target_info.text = ""
+	
+	var st: Dictionary = s.get("striker", {})
+	if not st.is_empty():
+		lbl_striker.text = "► %s *  %d(%d)" % [st.get("name", ""), int(st.get("runs", 0)), int(st.get("balls", 0))]
+	var ns: Dictionary = s.get("nonstriker", {})
+	if not ns.is_empty():
+		lbl_non_striker.text = "  %s  %d(%d)" % [ns.get("name", ""), int(ns.get("runs", 0)), int(ns.get("balls", 0))]
+	var bw: Dictionary = s.get("bowler", {})
+	if not bw.is_empty():
+		lbl_bowler.text = "► %s  %.1f-%d-%d-%d  Eco:%.1f" % [bw.get("name", ""),
+			float(bw.get("overs", 0.0)), int(bw.get("maidens", 0)),
+			int(bw.get("runs", 0)), int(bw.get("wickets", 0)), float(bw.get("economy", 0.0))]
+	
+	lbl_crr.text = "CRR: " + str(snapped(float(s.get("crr", 0.0)), 0.01))
+	lbl_rrr.text = "RRR: " + str(snapped(float(s.get("rrr", 0.0)), 0.01))
+	lbl_partnership.text = "Partnership: " + str(int(s.get("partnership", 0)))
+	
+	lbl_weather.text = "☁️ " + _weather_pitch.get_weather_name(int(s.get("weather", 0)))
+	lbl_pitch.text = "🏟️ " + _weather_pitch.get_pitch_name(int(s.get("pitch_type", 0)))
+	lbl_pressure.text = "📊 Pressure: " + str(snapped(float(s.get("pressure", 0.0)) * 100, 1)) + "%"
+	var max_r = int(s.get("drs_max", 1))
+	lbl_drs.text = "DRS: " + "🟢".repeat(int(s.get("drs_batting", 0))) + "🔴".repeat(maxi(0, max_r - int(s.get("drs_batting", 0))))
+	
+	var mom = float(s.get("momentum", 0.0))
+	if mom > 0.1:
+		lbl_momentum.text = "⚡ " + s.get("batting_team", "")
+	elif mom < -0.1:
+		lbl_momentum.text = "⚡ " + s.get("bowling_team", "")
+	else:
+		lbl_momentum.text = "⚡ Even"
 
 func _unhandled_input(event: InputEvent) -> void:
 	if is_waiting_for_input:
@@ -249,6 +365,9 @@ func _select_shot(shot: int) -> void:
 	delivery_alert.visible = false
 	selection_timer.stop()
 	AudioManager.play_click()
+	if net_mode:
+		NetworkManager.send_action({"kind": "shot", "value": shot})
+		return
 	MatchEngine.receive_shot_input(shot)
 
 func _on_selection_timeout() -> void:
@@ -300,6 +419,10 @@ func _select_bowl(idx: int) -> void:
 	is_waiting_for_bowl = false
 	bowl_panel.visible = false
 	bowl_timer.stop()
+	AudioManager.play_click()
+	if net_mode:
+		NetworkManager.send_action({"kind": "bowl", "value": bowl_options[idx]})
+		return
 	MatchEngine.receive_bowl_input(bowl_options[idx])
 
 func _on_bowl_ready() -> void:
@@ -310,7 +433,10 @@ func _on_bowl_ready() -> void:
 	bowl_panel.visible = false
 	bowl_locked.visible = false
 	btn_bowl_ready.visible = false
-	MatchEngine.receive_bowl_input(bowl_options[_pending_bowl])
+	if net_mode:
+		NetworkManager.send_action({"kind": "bowl", "value": bowl_options[_pending_bowl]})
+	else:
+		MatchEngine.receive_bowl_input(bowl_options[_pending_bowl])
 	_pending_bowl = -1
 
 func _on_bowl_timeout() -> void:
@@ -318,9 +444,9 @@ func _on_bowl_timeout() -> void:
 	_select_bowl(_rng_i(0, bowl_options.size() - 1))
 
 func _bowl_options_for(bowler: PlayerData) -> Array[int]:
-	if bowler.bowling_type == "SPIN":
-		return [Constants.DeliveryType.OFF_SPIN, Constants.DeliveryType.LEG_SPIN, Constants.DeliveryType.SLOWER]
-	return [Constants.DeliveryType.YORKER, Constants.DeliveryType.BOUNCER, Constants.DeliveryType.FULL_TOSS, Constants.DeliveryType.SLOWER]
+	if bowler == null or bowler.bowling_type != "SPIN":
+		return [Constants.DeliveryType.YORKER, Constants.DeliveryType.BOUNCER, Constants.DeliveryType.FULL_TOSS, Constants.DeliveryType.SLOWER]
+	return [Constants.DeliveryType.OFF_SPIN, Constants.DeliveryType.LEG_SPIN, Constants.DeliveryType.SLOWER]
 
 func _bowl_label(delivery: int, idx: int) -> String:
 	match delivery:
@@ -352,6 +478,9 @@ func _select_drs(should_review: bool) -> void:
 	drs_popup.visible = false
 	drs_timer.stop()
 	AudioManager.play_click()
+	if net_mode:
+		NetworkManager.send_action({"kind": "drs", "value": should_review})
+		return
 	MatchEngine.receive_drs_input(should_review)
 
 func _on_drs_timeout() -> void:
@@ -604,15 +733,41 @@ func _on_second_innings_for_field() -> void:
 		field_view.clear_wagon()
 	_partnership_milestone_shown = 0
 
+func _show_innings_break_net(target: int) -> void:
+	innings_break_popup.visible = true
+	var tail := "AI vs AI in progress…" if NetworkManager.my_team_name() == "" else "Chase is on!"
+	lbl_innings_break.text = "INNINGS BREAK\n\nTarget: %d to win!\n\n%s" % [target, tail]
+	await get_tree().create_timer(0.5 if MatchEngine.fast_forward else 3.0).timeout
+	innings_break_popup.visible = false
+
+func _on_net_match_end(event: Dictionary) -> void:
+	_match_done = true
+	# Mirror the host's final scorecards, then show the Scorecard screen.
+	GameManager.set_meta("match_winner", event.get("winner", ""))
+	GameManager.set_meta("last_scorecard", event.get("scorecard", {}))
+	GameManager.first_innings_scorecard = event.get("first_innings", {})
+	await get_tree().create_timer(1.5).timeout
+	var fade = create_tween()
+	fade.tween_property(self, "modulate:a", 0.0, Constants.SCENE_FADE_DURATION)
+	await fade.finished
+	NetworkManager.disconnect_gracefully()
+	get_tree().change_scene_to_file("res://scenes/ui/Scorecard.tscn")
+
 # Super over round: banner + fresh wagon wheel for the shootout.
 func _on_super_over_for_field(round_no: int) -> void:
 	if field_view:
 		field_view.clear_wagon()
 	_partnership_milestone_shown = 0
 	innings_break_popup.visible = true
-	var msg := "⚡ SUPER OVER ⚡\n\nScores level — sudden death!\n\n%s bat first" % GameManager.batting_team.team_name
+	# Net clients have no local teams — read the batting side from the snapshot.
+	var batting_name := ""
+	if net_mode and not _net_snap.is_empty():
+		batting_name = _net_snap.get("batting_team", "")
+	elif GameManager.batting_team:
+		batting_name = GameManager.batting_team.team_name
+	var msg := "⚡ SUPER OVER ⚡\n\nScores level — sudden death!\n\n%s bat first" % batting_name
 	if round_no > 1:
-		msg = "⚡ SUPER OVER %d ⚡\n\nTied again — sudden death!\n\n%s bat first" % [round_no, GameManager.batting_team.team_name]
+		msg = "⚡ SUPER OVER %d ⚡\n\nTied again — sudden death!\n\n%s bat first" % [round_no, batting_name]
 	lbl_innings_break.text = msg
 	await get_tree().create_timer(0.5 if MatchEngine.fast_forward else 2.5).timeout
 	innings_break_popup.visible = false
@@ -623,6 +778,7 @@ func _on_innings_ended(scorecard: Dictionary) -> void:
 	_update_display()
 
 func _on_match_ended(winner: String) -> void:
+	_match_done = true
 	await get_tree().create_timer(1.5).timeout
 	var fade = create_tween()
 	fade.tween_property(self, "modulate:a", 0.0, Constants.SCENE_FADE_DURATION)

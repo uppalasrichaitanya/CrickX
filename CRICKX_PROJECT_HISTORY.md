@@ -125,5 +125,14 @@ Defined in `Constants.gd` and Resources (`PlayerData.gd`, `TeamData.gd`).
 
 ---
 
+## 10. Finish-All Milestone (hot-seat, career, polish, LAN)
+- **Hot-seat multiplayer** (`MatchEngine.hotseat` + lock-screen handoff): both innings fully human. Bowl picks lock behind a "pass the device" screen so the batting player only sees the delivery on Ready; team-labeled panels and DRS popups throughout; verified by a HOTSEAT smoke spec asserting shots+bowls in both innings.
+- **Career mode** (`CareerManager` + `CareerRecords.tscn`): per-player aggregates (runs/balls/50s/100s/ducks/wickets/catches/best figures) recorded at every match end, persisted to `user://saves/career.json`, all-time tables UI with reset. Super-over shootouts are excluded by design. Unit-tested without breaking real saves (backup/restore in the test).
+- **Polish**: central `CrickXTheme.tres` (buttons/labels/panels/bars/lists in brand colors, applied project-wide), wicket/six screen shake in FieldView, honest ODI-tie display on the Scorecard, real BallSimulator super overs for simmed ties (with state snapshot/restore so sims have zero side effects), and a test-harness fix so the suite never clobbers a real tournament save.
+- **LAN multiplayer** (`NetworkManager` + `MultiplayerMenu.tscn`): authoritative host runs the sim; the client mirrors delivery/ball/over/innings/match/super-over events with snapshot-driven HUD rendering and sends shot/bowl/DRS inputs back via RPC. 25s host watchdog AI-fills silent peers so a drop can't soft-lock; disconnects show a connection-lost overlay. Verified by a two-process localhost loopback test (host + client, both PASS) that also runs in CI.
+- **Cleanups**: removed the deprecated `full_mode` flag and the unused `standings` dict; `implementation_plan.md` rewritten as a status document.
+
+---
+
 **End of Document**  
 *Use this text file directly as a knowledge base prompt when expanding features next.*

@@ -33,5 +33,22 @@ jobs:
           fi
           echo "import clean"
 
-      - name: Run headless smoke test (8 matches + DRS unit + super over + full tournament)
+      - name: Run headless smoke test (9 matches + DRS unit + super over + full tournament)
         run: ./godot --headless --path . -s res://tests/smoke_test.gd
+
+      - name: Run LAN loopback test (host + client on localhost)
+        run: |
+          ./godot --headless --path . -s res://tests/net_host.gd -- --port=54123 > host.log 2>&1 &
+          HOST_PID=$!
+          sleep 4
+          ./godot --headless --path . -s res://tests/net_client.gd -- --port=54123 > client.log 2>&1 &
+          CLI_PID=$!
+          wait $HOST_PID
+          HOST_RC=$?
+          wait $CLI_PID
+          CLI_RC=$?
+          echo "--- host log ---"; grep -E "HOST:|NET-RESULT|SCRIPT ERROR" host.log | tail -8
+          echo "--- client log ---"; grep -E "CLIENT:|NET-RESULT|SCRIPT ERROR" client.log | tail -8
+          grep -q "NET-RESULT: PASS (host)" host.log || exit 1
+          grep -q "NET-RESULT: PASS (client)" client.log || exit 1
+          test $HOST_RC -eq 0 -a $CLI_RC -eq 0

@@ -87,9 +87,8 @@ tooltip_text = "World Cup style tournament: 2 groups, semis, final"
 [node name="BtnMultiplayer" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)
 layout_mode = 2
-disabled = true
-text = "👥  Multiplayer (coming soon)"
-tooltip_text = "Planned for a future update"
+text = "👥  Multiplayer"
+tooltip_text = "Play over LAN: host or join a match"
 
 [node name="BtnRecords" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)

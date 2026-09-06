@@ -1,0 +1,172 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/MultiplayerMenu.gd" id="1"]
+
+[node name="MultiplayerMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.051, 0.067, 0.09, 1)
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -250.0
+offset_top = 18.0
+offset_right = 250.0
+offset_bottom = 58.0
+text = "👥 MULTIPLAYER (LAN)"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0, 0.784, 0.325, 1)
+theme_override_font_sizes/font_size = 30
+
+[node name="Teams" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -430.0
+offset_top = 66.0
+offset_right = 430.0
+offset_bottom = 240.0
+theme_override_constants/separation = 30
+alignment = 1
+
+[node name="TeamAPanel" type="VBoxContainer" parent="Teams"]
+layout_mode = 2
+custom_minimum_size = Vector2(300, 0)
+
+[node name="LabelA" type="Label" parent="Teams/TeamAPanel"]
+layout_mode = 2
+text = "HOST TEAM (bats first)"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_font_sizes/font_size = 15
+
+[node name="TeamAList" type="ItemList" parent="Teams/TeamAPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TeamBPanel" type="VBoxContainer" parent="Teams"]
+layout_mode = 2
+custom_minimum_size = Vector2(300, 0)
+
+[node name="LabelB" type="Label" parent="Teams/TeamBPanel"]
+layout_mode = 2
+text = "GUEST TEAM"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_font_sizes/font_size = 15
+
+[node name="TeamBList" type="ItemList" parent="Teams/TeamBPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FormatRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 250.0
+offset_right = 200.0
+offset_bottom = 285.0
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="FormatLabel" type="Label" parent="FormatRow"]
+layout_mode = 2
+text = "Format"
+
+[node name="FormatBtn" type="OptionButton" parent="FormatRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(100, 0)
+
+[node name="NetRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -400.0
+offset_top = 295.0
+offset_right = 400.0
+offset_bottom = 340.0
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="IPLabel" type="Label" parent="NetRow"]
+layout_mode = 2
+text = "IP"
+
+[node name="IPEdit" type="LineEdit" parent="NetRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(170, 0)
+text = "127.0.0.1"
+
+[node name="PortLabel" type="Label" parent="NetRow"]
+layout_mode = 2
+text = "Port"
+
+[node name="PortEdit" type="LineEdit" parent="NetRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+text = "54000"
+
+[node name="BtnRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -260.0
+offset_top = 355.0
+offset_right = 260.0
+offset_bottom = 410.0
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="BtnHost" type="Button" parent="BtnRow"]
+custom_minimum_size = Vector2(220, 52)
+layout_mode = 2
+text = "🖥 Host Game"
+
+[node name="BtnJoin" type="Button" parent="BtnRow"]
+custom_minimum_size = Vector2(220, 52)
+layout_mode = 2
+text = "🔌 Join Game"
+
+[node name="Status" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -400.0
+offset_top = 425.0
+offset_right = 400.0
+offset_bottom = 465.0
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.545, 0.58, 0.624, 1)
+theme_override_font_sizes/font_size = 15
+autowrap_mode = 2
+
+[node name="BtnBack" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -100.0
+offset_top = -65.0
+offset_right = 100.0
+offset_bottom = -15.0
+text = "← Back"

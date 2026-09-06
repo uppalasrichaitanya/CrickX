@@ -208,8 +208,8 @@ func _quick_sim(home: TeamData, away: TeamData, rng: RandomNumberGenerator) -> D
 	var score_b := _team_t20_score(away, home, rng)
 	var winner := home.team_name if score_a["runs"] > score_b["runs"] else away.team_name
 	if score_a["runs"] == score_b["runs"]:
-		# Tie — coin flip (super over shorthand)
-		winner = home.team_name if rng.randf() < 0.5 else away.team_name
+		# Level scores — play a real super-over shootout through BallSimulator.
+		winner = _sim_super_over(home, away)
 	return {
 		"winner": winner,
 		"winner_runs": score_a["runs"] if winner == home.team_name else score_b["runs"],
@@ -217,6 +217,91 @@ func _quick_sim(home: TeamData, away: TeamData, rng: RandomNumberGenerator) -> D
 		"loser_runs": score_b["runs"] if winner == home.team_name else score_a["runs"],
 		"loser_overs": 20.0,
 	}
+
+# Real sudden-death shootout for simmed ties: 6 legal balls per side with a
+# 2-wicket cap, resolved through BallSimulator with the actual XIs.
+# Player sim-state is snapshotted and restored so the shootout has no side
+# effects on the tournament. Repeats on further ties (max 5 rounds, then seed).
+func _sim_super_over(home: TeamData, away: TeamData) -> String:
+	var sim := BallSimulator.new()
+	add_child(sim)  # runs _ready (RNG + difficulty)
+	var ai := AIController.new()
+	var snapshot := _snapshot_xi(home)
+	snapshot.append_array(_snapshot_xi(away))
+	var gm_pressure: float = GameManager.batting_pressure
+	var gm_momentum: float = GameManager.momentum
+	var gm_wear: float = GameManager.pitch_wear
+	var winner := ""
+	var rounds := 0
+	while winner == "" and rounds < 5:
+		rounds += 1
+		var a := _sim_mini_innings(home, away, sim, ai)
+		var b := _sim_mini_innings(away, home, sim, ai)
+		if a > b:
+			winner = home.team_name
+		elif b > a:
+			winner = away.team_name
+	if winner == "":
+		winner = home.team_name if randf() < 0.5 else away.team_name
+	_restore_xi(snapshot)
+	GameManager.batting_pressure = gm_pressure
+	GameManager.momentum = gm_momentum
+	GameManager.pitch_wear = gm_wear
+	sim.queue_free()
+	return winner
+
+func _snapshot_xi(team: TeamData) -> Array:
+	var snap := []
+	for p in team.playing_xi:
+		snap.append([p, p.form, p.fatigue, p.morale, p.confidence, p.rhythm])
+	return snap
+
+func _restore_xi(snapshot: Array) -> void:
+	for entry in snapshot:
+		var p: PlayerData = entry[0]
+		p.form = entry[1]
+		p.fatigue = entry[2]
+		p.morale = entry[3]
+		p.confidence = entry[4]
+		p.rhythm = entry[5]
+
+func _sim_mini_innings(bat: TeamData, bowl: TeamData, sim: BallSimulator, ai: AIController) -> int:
+	var state := {
+		"format": Constants.MatchFormat.T20,
+		"phase": Constants.MatchPhase.DEATH,
+		"current_over": 19,
+		"current_ball": 0,
+		"total_runs": 0,
+		"total_wickets": 0,
+		"target": 0,
+		"max_overs": 20,
+		"is_first_innings": true,
+	}
+	var striker: PlayerData = bat.playing_xi[0]
+	var bowler: PlayerData = _best_bowler(bowl)
+	var runs := 0
+	var wkts := 0
+	var balls := 0
+	while balls < 6 and wkts < 2:
+		var shot: int = ai.choose_batting_shot(striker, state)
+		var del: int = ai.choose_bowling_delivery(bowler, striker, state)
+		var o: Dictionary = sim.simulate_ball(striker, bowler, shot, del, state, bowl)
+		if o.get("is_wide", false) or o.get("is_no_ball", false):
+			runs += 1
+			continue
+		balls += 1
+		if o.get("is_wicket", false):
+			wkts += 1
+		else:
+			runs += int(o.get("runs", 0))
+	return runs
+
+func _best_bowler(team: TeamData) -> PlayerData:
+	var best: PlayerData = team.playing_xi[0]
+	for p in team.get_bowlers():
+		if p.bowling_skill > best.bowling_skill:
+			best = p
+	return best
 
 func _team_t20_score(bat: TeamData, bowl: TeamData, rng: RandomNumberGenerator) -> Dictionary:
 	var bat_avg := 0.0

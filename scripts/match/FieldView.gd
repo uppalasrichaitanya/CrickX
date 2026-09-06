@@ -297,6 +297,7 @@ func play_outcome(outcome: Dictionary) -> void:
 	
 	if outcome.get("is_wicket", false):
 		_animate_wicket(outcome, wtype, zone)
+		_screen_shake(7.0)
 		return
 	
 	if key == "DROPPED_CATCH":
@@ -304,7 +305,9 @@ func play_outcome(outcome: Dictionary) -> void:
 		return
 	
 	match runs:
-		6: _animate_six(zone)
+		6:
+			_animate_six(zone)
+			_screen_shake(4.0)
 		4: _animate_four(zone)
 		3, 2, 1: _animate_runs(zone, runs)
 		0: _animate_dot()
@@ -460,6 +463,17 @@ func _screen_flash(strength: float, color: Color = Color(1, 1, 1, 1)) -> void:
 	flash.color = Color(color.r, color.g, color.b, strength)
 	var tw := create_tween()
 	tw.tween_property(flash, "color:a", 0.0, 0.35 * _speed_scale())
+
+# Camera shake on big moments (wickets, sixes). Skipped in fast-forward.
+func _screen_shake(strength: float = 6.0) -> void:
+	if MatchEngine.fast_forward:
+		return
+	var base := position
+	var tw := create_tween()
+	for i in range(5):
+		var off := Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
+		tw.tween_property(self, "position", base + off, 0.04)
+	tw.tween_property(self, "position", base, 0.06)
 
 # Milestone fanfare — bigger, golden, centered on the striker
 func play_fireworks() -> void:

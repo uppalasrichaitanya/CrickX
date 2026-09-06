@@ -180,7 +180,7 @@ func start_new_match(team_a: TeamData, team_b: TeamData, format: int) -> void:
 	state["pitch_type"] = pitch_type
 
 func get_current_over_string() -> String:
-	return str(state["current_over"]) + "." + str(state["current_ball"])
+	return str(state.get("current_over", 0)) + "." + str(state.get("current_ball", 0))
 
 func get_max_reviews() -> int:
 	if state.get("format", 0) == Constants.MatchFormat.T20:
@@ -188,19 +188,19 @@ func get_max_reviews() -> int:
 	return Constants.DRS_REVIEWS_ODI
 
 func get_required_run_rate() -> float:
-	if state["is_first_innings"] or state["target"] == 0:
+	if state.get("is_first_innings", true) or state.get("target", 0) == 0:
 		return 0.0
-	var runs_needed = state["target"] - state["total_runs"]
-	var balls_remaining = (state["max_overs"] * 6) - (state["current_over"] * 6 + state["current_ball"])
+	var runs_needed = state.get("target", 0) - state.get("total_runs", 0)
+	var balls_remaining = (state.get("max_overs", 20) * 6) - (state.get("current_over", 0) * 6 + state.get("current_ball", 0))
 	if balls_remaining <= 0:
 		return 999.0
 	return (float(runs_needed) / float(balls_remaining)) * 6.0
 
 func get_current_run_rate() -> float:
-	var total_balls = state["current_over"] * 6 + state["current_ball"]
+	var total_balls = state.get("current_over", 0) * 6 + state.get("current_ball", 0)
 	if total_balls == 0:
 		return 0.0
-	return (float(state["total_runs"]) / float(total_balls)) * 6.0
+	return (float(state.get("total_runs", 0)) / float(total_balls)) * 6.0
 
 func get_partnership_runs() -> int:
 	if striker == null or non_striker == null:

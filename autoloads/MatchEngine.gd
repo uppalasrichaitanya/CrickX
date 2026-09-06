@@ -33,6 +33,8 @@ var _match_gen: int = 0  # Generation token — zombie coroutines from old match
 var human_side: TeamData = null  # The player's team this match (null = pure AI match)
 var human_bowls_role: bool = true  # Does the human play their bowling innings?
 var hotseat: bool = false  # Hot-seat: both teams are human (pass-the-device)
+var _net_wait: bool = false  # Current input wait is for the remote peer
+var net_fallbacks: int = 0  # Watchdog AI-fills (0 in a healthy session)
 var fast_forward: bool = false  # Collapse inter-ball delays for quick auto-sim
 var _pending_drs_outcome: Dictionary = {}
 var _pending_drs_wicket_type: String = ""
@@ -60,6 +62,7 @@ func start_match(team_a: TeamData, team_b: TeamData, format: int,
 		hotseat_mode: bool = false) -> void:
 	_match_gen += 1  # Any ball-flow coroutines still awaiting from the last match now abort.
 	GameManager.start_new_match(team_a, team_b, format)
+	GameManager.remove_meta("match_tied")
 	human_side = human_team
 	human_bowls_role = human_plays_bowling
 	hotseat = hotseat_mode
@@ -110,6 +113,63 @@ func _begin_match_flow() -> void:
 	await _wait(0.8)
 	_begin_ball(_match_gen)
 
+# ─── Online (authoritative host) helpers ───
+# The host runs the full sim; the client mirrors events and sends inputs.
+func _net_active() -> bool:
+	return NetworkManager.online and NetworkManager.is_host
+
+# True when the BOWLING side right now is the remote peer's team.
+func _net_turn_bowl() -> bool:
+	return _net_active() and GameManager.bowling_team != null \
+		and GameManager.bowling_team.team_name == NetworkManager.client_team_name
+
+# True when the BATTING side right now is the remote peer's team.
+func _net_turn_bat() -> bool:
+	return _net_active() and GameManager.batting_team != null \
+		and GameManager.batting_team.team_name == NetworkManager.client_team_name
+
+func _net_broadcast(event: Dictionary) -> void:
+	if _net_active():
+		event["snapshot"] = NetworkManager.build_snapshot()
+		NetworkManager.broadcast(event)
+
+# ENet RPCs only carry plain Variants — strip any Object references
+# (e.g. the catch fielder) from engine dicts before broadcasting.
+func _net_clean(d: Dictionary) -> Dictionary:
+	var out := d.duplicate()
+	for k in out.keys():
+		if out[k] is Object:
+			out.erase(k)
+		elif out[k] is Array:
+			var arr: Array = (out[k] as Array).duplicate()
+			for i in range(arr.size()):
+				if arr[i] is Dictionary:
+					arr[i] = _net_clean(arr[i])
+			out[k] = arr
+	return out
+
+# Host watchdog: a dropped/silent peer can never soft-lock the match —
+# unresolved remote inputs fall back to AI after the timeout.
+func _start_net_watchdog() -> void:
+	var gen := _match_gen
+	var st := current_state
+	_net_wait = true
+	await get_tree().create_timer(NetworkManager.INPUT_WAIT_TIMEOUT).timeout
+	if gen != _match_gen or not _net_wait or current_state != st:
+		return
+	_net_wait = false
+	net_fallbacks += 1
+	if current_state == State.WAITING_FOR_BOWL:
+		current_delivery = simulator.ai_controller.choose_bowling_delivery(
+			GameManager.current_bowler, GameManager.striker, GameManager.state)
+		_on_delivery_chosen(current_delivery, _match_gen)
+	elif current_state == State.WAITING_FOR_SHOT:
+		current_shot = simulator.ai_controller.choose_batting_shot(
+			GameManager.striker, GameManager.state)
+		_on_shot_selected(current_shot)
+	elif current_state == State.WAITING_FOR_REVIEW:
+		_resolve_drs_review(false)
+
 # ═══════════════════════════════════════
 # NEW FLOW: Delivery first, then batsman reacts
 # Ball-flow coroutines carry the match generation they belong to; if a newer
@@ -121,8 +181,12 @@ func _begin_ball(gen: int) -> void:
 	current_shot = -1
 	current_delivery = -1
 	
-	# Step 1: AI bowler always picks delivery first
-	if is_human_bowling:
+	# Step 1: pick who bowls this ball — local human, remote human, or AI
+	if _net_turn_bowl():
+		current_state = State.WAITING_FOR_BOWL
+		_net_broadcast({"type": "request_bowl"})
+		_start_net_watchdog()
+	elif is_human_bowling:
 		current_state = State.WAITING_FOR_BOWL
 		request_bowl_selection.emit()
 	else:
@@ -132,6 +196,7 @@ func _begin_ball(gen: int) -> void:
 
 func receive_bowl_input(delivery: int) -> void:
 	if current_state == State.WAITING_FOR_BOWL:
+		_net_wait = false
 		current_delivery = delivery
 		_on_delivery_chosen(delivery, _match_gen)
 
@@ -147,14 +212,19 @@ func _on_delivery_chosen(delivery: int, gen: int) -> void:
 		del_name = "⚡ HAT-TRICK BALL ⚡ " + del_name
 	delivery_incoming.emit(del_name)
 	delivery_thrown.emit(delivery)
+	_net_broadcast({"type": "delivery", "delivery_name": del_name, "delivery_type": delivery})
 	
 	# After 0.6s approach animation, show shot selection
 	await _wait(0.6)
 	if gen != _match_gen:
 		return
 	
-	# Step 3: Now batsman must react
-	if is_human_batting:
+	# Step 3: Now batsman must react — local human, remote human, or AI
+	if _net_turn_bat():
+		current_state = State.WAITING_FOR_SHOT
+		_net_broadcast({"type": "request_shot", "delivery_name": del_name})
+		_start_net_watchdog()
+	elif is_human_batting:
 		current_state = State.WAITING_FOR_SHOT
 		request_shot_selection.emit(del_name)
 	else:
@@ -169,6 +239,7 @@ func _on_shot_selected(shot: int) -> void:
 
 func receive_shot_input(shot: int) -> void:
 	if current_state == State.WAITING_FOR_SHOT:
+		_net_wait = false
 		_on_shot_selected(shot)
 
 func _simulate() -> void:
@@ -253,6 +324,7 @@ func _after_ball(outcome: Dictionary) -> void:
 	GameManager.ball_bowled.emit(outcome)
 	current_state = State.SHOWING_RESULT
 	ball_result_ready.emit(outcome)
+	_net_broadcast({"type": "ball", "outcome": _net_clean(outcome)})
 	
 	# Check end of over
 	if GameManager.state["current_ball"] >= Constants.BALLS_PER_OVER:
@@ -324,7 +396,11 @@ func _enter_drs_review(outcome: Dictionary, wtype: String) -> void:
 	current_state = State.WAITING_FOR_REVIEW
 	_pending_drs_outcome = outcome
 	_pending_drs_wicket_type = wtype
-	if is_human_batting:
+	if _net_turn_bat():
+		_net_broadcast({"type": "request_drs", "wicket_type": wtype,
+			"reviews_left": GameManager.drs_reviews_batting})
+		_start_net_watchdog()
+	elif is_human_batting:
 		request_drs_review.emit(wtype, GameManager.drs_reviews_batting)
 	else:
 		# AI team is batting: decide after a short dramatic beat.
@@ -337,8 +413,11 @@ func _enter_drs_review(outcome: Dictionary, wtype: String) -> void:
 		_resolve_drs_review(wants_review)
 
 func receive_drs_input(should_review: bool) -> void:
-	if current_state != State.WAITING_FOR_REVIEW or not is_human_batting:
+	if current_state != State.WAITING_FOR_REVIEW:
 		return
+	if not is_human_batting and not _net_wait:
+		return
+	_net_wait = false
 	_resolve_drs_review(should_review)
 
 func _resolve_drs_review(should_review: bool) -> void:
@@ -430,6 +509,7 @@ func _end_over() -> void:
 	}
 	GameManager.over_completed.emit(GameManager.state["current_over"], runs_this_over, wickets_this_over)
 	over_ended.emit(summary)
+	_net_broadcast({"type": "over", "summary": _net_clean(summary)})
 	
 	# Check max overs
 	if GameManager.state["current_over"] >= GameManager.state["max_overs"]:
@@ -466,6 +546,8 @@ func _end_innings() -> void:
 	if GameManager.state["is_first_innings"]:
 		# Signal the HUD that second innings is starting
 		second_innings_starting.emit()
+		_net_broadcast({"type": "innings_break",
+			"target": GameManager.state.get("total_runs", 0) + 1})
 		await _wait(3.0)
 		if gen != _match_gen:
 			return
@@ -505,6 +587,9 @@ func _end_innings() -> void:
 			winner = GameManager.batting_team.team_name
 		else:
 			winner = GameManager.bowling_team.team_name
+		# ODI ties stand as ties (super overs are a T20 shootout format).
+		if bat_runs == target - 1 and not is_t20:
+			GameManager.set_meta("match_tied", true)
 		_end_match(winner)
 
 # Begins one super-over round (both mini-innings flow through the normal loop).
@@ -520,6 +605,7 @@ func _start_super_over_round(gen: int) -> void:
 	for p in GameManager.bowling_team.squad:
 		p.set_meta("wicket_ledger", [])
 	super_over_starting.emit(int(GameManager.state.get("super_over_round", 1)))
+	_net_broadcast({"type": "super_over", "round": int(GameManager.state.get("super_over_round", 1))})
 	await _wait(2.0)
 	if gen != _match_gen:
 		return
@@ -533,6 +619,9 @@ func _end_match(winner: String) -> void:
 	CareerManager.record_match()
 	GameManager.match_ended.emit(winner, scorecard)
 	match_ended_signal.emit(winner)
+	_net_broadcast({"type": "match_end", "winner": winner,
+		"scorecard": _net_clean(scorecard),
+		"first_innings": _net_clean(GameManager.first_innings_scorecard)})
 
 # Credit the current bowler for a partial over at innings/match end.
 # Guarded so calling it twice (end_innings then end_match) never double-counts.

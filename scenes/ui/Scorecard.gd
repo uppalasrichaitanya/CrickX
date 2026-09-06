@@ -20,7 +20,10 @@ func _build_scorecard() -> void:
 	
 	# Winner display
 	if winner != "":
-		winner_label.text = "🏆 " + winner + " WINS! 🏆"
+		if GameManager.has_meta("match_tied"):
+			winner_label.text = "🤝 MATCH TIED 🤝"
+		else:
+			winner_label.text = "🏆 " + winner + " WINS! 🏆"
 		winner_label.add_theme_color_override("font_color", Constants.COLOR_ACCENT_GOLD)
 		# Man of the Match
 		var atm = AtmosphereSystem.new()
