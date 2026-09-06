@@ -36,6 +36,9 @@ jobs:
       - name: Run headless smoke test (9 matches + DRS unit + super over + full tournament)
         run: ./godot --headless --path . -s res://tests/smoke_test.gd
 
+      - name: Run UI smoke test (scene wiring, toggle modes, quit dialog, back paths)
+        run: ./godot --headless --path . -s res://tests/ui_smoke.gd
+
       - name: Run LAN loopback test (host + client on localhost)
         run: |
           ./godot --headless --path . -s res://tests/net_host.gd -- --port=54123 > host.log 2>&1 &
