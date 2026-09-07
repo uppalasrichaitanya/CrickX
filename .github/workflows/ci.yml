@@ -75,11 +75,14 @@ jobs:
       - name: Warm up import cache
         run: ./godot --headless --editor --path . --quit > /dev/null 2>&1 || true
 
+      - name: Create build directories (the exporter will not make them)
+        run: mkdir -p build/windows build/linux
+
       - name: Export Windows (release)
-        run: ./godot --headless --path . --export-release "Windows Desktop" 2>&1 | tail -5
+        run: ./godot --headless --path . --export-release "Windows Desktop"
 
       - name: Export Linux (release)
-        run: ./godot --headless --path . --export-release "Linux" 2>&1 | tail -5
+        run: ./godot --headless --path . --export-release "Linux"
 
       - name: List builds
         run: ls -la build/windows build/linux
