@@ -64,6 +64,14 @@ Every delivery runs through `BallSimulator.gd`'s 8-module pipeline — form & fa
 
 > First import builds the `.godot/` cache (untracked). If the editor ever reports stale import errors, close it, delete `.godot/`, and reopen.
 
+### ⬇️ Download (no Godot needed)
+
+Grab the latest release from the [Releases page](https://github.com/uppalasrichaitanya/CrickX/releases):
+- **Windows** — download `CrickX-Windows.zip`, unzip, run `CrickX.exe`.
+- **Linux** — download `CrickX-Linux.tar.gz`, extract, run `./CrickX.x86_64`.
+
+Releases are built automatically by CI from version tags (`v*`) using Godot 4.2.2 release templates. Saves live in the OS user-data folder, so your tournament and career survive updates.
+
 ## 🎮 How to Play
 
 1. Run the project from the Godot editor (`F5`).

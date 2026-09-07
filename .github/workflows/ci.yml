@@ -55,3 +55,59 @@ jobs:
           grep -q "NET-RESULT: PASS (host)" host.log || exit 1
           grep -q "NET-RESULT: PASS (client)" client.log || exit 1
           test $HOST_RC -eq 0 -a $CLI_RC -eq 0
+
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot 4.2.2 + export templates
+        run: |
+          curl -sL -o godot.zip https://github.com/godotengine/godot/releases/download/4.2.2-stable/Godot_v4.2.2-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mv Godot_v4.2.2-stable_linux.x86_64 godot
+          chmod +x godot
+          mkdir -p ~/.local/share/godot/export_templates/4.2.2.stable
+          curl -sL -o templates.tpz https://github.com/godotengine/godot/releases/download/4.2.2-stable/Godot_v4.2.2-stable_export_templates.tpz
+          unzip -q templates.tpz -d ~/.local/share/godot/export_templates/4.2.2.stable
+
+      - name: Warm up import cache
+        run: ./godot --headless --editor --path . --quit > /dev/null 2>&1 || true
+
+      - name: Export Windows (release)
+        run: ./godot --headless --path . --export-release "Windows Desktop" 2>&1 | tail -5
+
+      - name: Export Linux (release)
+        run: ./godot --headless --path . --export-release "Linux" 2>&1 | tail -5
+
+      - name: List builds
+        run: ls -la build/windows build/linux
+
+      - name: Upload builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: crickx-builds
+          path: build/
+
+  release:
+    needs: [smoke-test, export]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: crickx-builds
+          path: dist
+
+      - name: Package and publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist && zip -qr ../CrickX-Windows.zip windows && tar -czf ../CrickX-Linux.tar.gz linux && cd ..
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release create "$TAG" CrickX-Windows.zip CrickX-Linux.tar.gz \
+            --title "CrickX $TAG" \
+            --notes "Download for Windows or Linux, unzip, and run. First release — have fun! 🏏"

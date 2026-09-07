@@ -12,3 +12,6 @@ Godot_Engine/
 Thumbs.db
 .DS_Store
 *.tmp
+
+# Export builds (never commit binaries)
+build/

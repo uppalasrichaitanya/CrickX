@@ -134,5 +134,14 @@ Defined in `Constants.gd` and Resources (`PlayerData.gd`, `TeamData.gd`).
 
 ---
 
+## 11. Ship-It Milestone (v1.0.0 release builds)
+- **Brand unify**: app + window title + menu title all `CrickX`; dark boot splash (`show_image=false`).
+- **`export_presets.cfg`**: Windows Desktop + Linux release presets, `tests/*` excluded from the shipped `.pck`, output to untracked `build/`.
+- **CI**: `export` job (templates + both release builds + artifact upload) and tag-gated `release` job (packages `CrickX-Windows.zip` / `CrickX-Linux.tar.gz`, publishes via `gh release create`).
+- **Known quirk**: `platform="Windows"` presets report `!preset.is_valid()` in this machine's headless editor while identical-structure Linux presets load clean (isolated across both local binaries, positions, and key sets) — CI is the gate; cross-platform Windows export from Linux is standard practice.
+- **Docs**: README download section + release checklist.
+
+---
+
 **End of Document**  
 *Use this text file directly as a knowledge base prompt when expanding features next.*
