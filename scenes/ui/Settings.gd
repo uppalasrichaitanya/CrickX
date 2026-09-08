@@ -21,10 +21,11 @@ func _ready() -> void:
 	fullscreen_check.button_pressed = GameManager.is_fullscreen
 	
 	difficulty_btn.clear()
-	difficulty_btn.add_item("Easy", Constants.Difficulty.EASY)
-	difficulty_btn.add_item("Medium", Constants.Difficulty.MEDIUM)
-	difficulty_btn.add_item("Hard", Constants.Difficulty.HARD)
+	difficulty_btn.add_item("Easy (%s to react)" % Constants.human_timeout_label(Constants.Difficulty.EASY), Constants.Difficulty.EASY)
+	difficulty_btn.add_item("Medium (%s to react)" % Constants.human_timeout_label(Constants.Difficulty.MEDIUM), Constants.Difficulty.MEDIUM)
+	difficulty_btn.add_item("Hard (%s to react)" % Constants.human_timeout_label(Constants.Difficulty.HARD), Constants.Difficulty.HARD)
 	difficulty_btn.selected = GameManager.difficulty
+	difficulty_btn.tooltip_text = "Reaction time per ball: how long you get to pick a shot or delivery"
 	
 	master_slider.value_changed.connect(_on_master_changed)
 	sfx_slider.value_changed.connect(_on_sfx_changed)
@@ -36,14 +37,18 @@ func _on_master_changed(val: float) -> void:
 	GameManager.master_volume = val / 100.0
 	master_value.text = "%d%%" % int(val)
 	AudioManager.set_master_volume(GameManager.master_volume)
+	GameManager.save_settings()
 
 func _on_sfx_changed(val: float) -> void:
 	GameManager.sfx_volume = val / 100.0
 	sfx_value.text = "%d%%" % int(val)
 	AudioManager.set_sfx_volume(GameManager.sfx_volume)
+	GameManager.save_settings()
 
 func _on_difficulty_changed(idx: int) -> void:
-	GameManager.difficulty = idx
+	GameManager.difficulty = difficulty_btn.get_item_id(idx)
+	GameManager.save_settings()  # persist immediately — a crash must not lose it
+	AudioManager.play_click()
 
 func _on_fullscreen_toggled(pressed: bool) -> void:
 	GameManager.is_fullscreen = pressed

@@ -39,8 +39,15 @@ func _populate_teams() -> void:
 		team_b_list.add_item(t.team_name)
 	team_a_list.select(0)
 	team_b_list.select(1)
-	team_a_list.item_selected.connect(func(idx): selected_team_a = idx)
-	team_b_list.item_selected.connect(func(idx): selected_team_b = idx)
+	team_a_list.item_selected.connect(func(idx): selected_team_a = idx; _validate())
+	team_b_list.item_selected.connect(func(idx): selected_team_b = idx; _validate())
+	_validate()
+
+func _validate() -> void:
+	# Same-team picks disable Start (no spam-through) + explain why.
+	var clash := selected_team_a == selected_team_b
+	btn_start.disabled = clash
+	warning_label.visible = clash
 
 func _populate_options() -> void:
 	format_btn.clear()

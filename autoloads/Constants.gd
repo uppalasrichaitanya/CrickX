@@ -19,9 +19,21 @@ const INPUT_TIMEOUT: float = 5.0
 
 # ─── UI Timing ───
 const SHOT_SELECTION_TIMEOUT: float = 4.0
-# Human players get a longer, visible window — 4s is too twitchy for newcomers
-# and the AI fallback firing silently is what makes the game look autoplayed.
-const HUMAN_INPUT_TIMEOUT: float = 7.0
+# Human reaction window by difficulty (Settings slider). The old flat 4s silent
+# fallback is what made the game look autoplayed — humans get room to breathe.
+const HUMAN_INPUT_TIMEOUT: float = 6.0
+
+static func human_input_timeout(diff: int) -> float:
+	match diff:
+		Difficulty.EASY:
+			return 8.0
+		Difficulty.HARD:
+			return 4.0
+		_:
+			return 6.0
+
+static func human_timeout_label(diff: int) -> String:
+	return "%.0fs" % human_input_timeout(diff)
 const SCENE_FADE_DURATION: float = 0.3
 const TYPEWRITER_SPEED: float = 0.03  # seconds per character
 const TURN_TRANSITION_DURATION: float = 3.0
