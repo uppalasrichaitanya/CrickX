@@ -143,71 +143,60 @@ text = "Partnership: 0"
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
+offset_left = 20.0
+offset_right = -20.0
 offset_top = 255.0
 offset_bottom = 280.0
-theme_override_constants/separation = 20
-alignment = 1
+theme_override_constants/separation = 24
 
-[node name="Weather" type="Label" parent="StatusBar"]
+[node name="Conditions" type="Label" parent="StatusBar"]
 layout_mode = 2
-text = "☁️ Sunny"
-
-[node name="Pitch" type="Label" parent="StatusBar"]
-layout_mode = 2
-text = "🏟️ Flat"
-
-[node name="Pressure" type="Label" parent="StatusBar"]
-layout_mode = 2
-text = "📊 Pressure: 0%"
+size_flags_horizontal = 3
+text = "☁️ Sunny  🏟️ Flat  📊 0%"
+theme_override_colors/font_color = Color(0.545, 0.58, 0.624, 1)
+theme_override_font_sizes/font_size = 14
+tooltip_text = "Weather, pitch and batting pressure"
 
 [node name="Momentum" type="Label" parent="StatusBar"]
 layout_mode = 2
 text = "⚡ Even"
+theme_override_colors/font_color = Color(0.545, 0.58, 0.624, 1)
+theme_override_font_sizes/font_size = 14
+tooltip_text = "Who has the momentum right now"
 
 [node name="DRS" type="Label" parent="StatusBar"]
 layout_mode = 2
 text = "DRS: 🟢"
+theme_override_colors/font_color = Color(0.545, 0.58, 0.624, 1)
+theme_override_font_sizes/font_size = 14
+tooltip_text = "Your reviews remaining (green = available)"
 
 [node name="FFBtn" type="Button" parent="StatusBar"]
 layout_mode = 2
 custom_minimum_size = Vector2(44, 0)
 toggle_mode = true
 text = "⏩"
-tooltip_text = "Fast-forward: skip the wait between balls"
+tooltip_text = "Fast-forward: skip the wait between balls (F)"
 
 [node name="WagonBtn" type="Button" parent="StatusBar"]
 layout_mode = 2
 custom_minimum_size = Vector2(44, 0)
 toggle_mode = true
 text = "🧭"
-tooltip_text = "Wagon wheel: show every shot line this innings"
+tooltip_text = "Wagon wheel: show every shot line this innings (C)"
 
 [node name="QuitBtn" type="Button" parent="StatusBar"]
 layout_mode = 2
 custom_minimum_size = Vector2(44, 0)
 text = "✕"
-tooltip_text = "Quit match (back to menu)"
-
-[node name="ControlsHint" type="Label" parent="StatusBar"]
-layout_mode = 2
-text = "⌨️ 1-6 / CLICK = bat & bowl • SPACE = block • C = wagon • F = fast"
-theme_override_colors/font_color = Color(0.545, 0.58, 0.624, 1)
-theme_override_font_sizes/font_size = 12
-tooltip_text = "Your controls — this legend is always visible"
-
-[node name="ControlsHint" type="Label" parent="StatusBar"]
-layout_mode = 2
-text = "⌨️ 1-6 / CLICK = bat & bowl • SPACE = block • C = wagon • F = fast • U = DRS"
-theme_override_colors/font_color = Color(0.545, 0.58, 0.624, 1)
-theme_override_font_sizes/font_size = 12
-tooltip_text = "Your controls — this legend is always visible"
+tooltip_text = "Quit match (back to menu) (ESC)"
 
 [node name="OverDotsBar" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_top = 290.0
-offset_bottom = 325.0
+offset_top = 284.0
+offset_bottom = 314.0
 
 [node name="HBox" type="HBoxContainer" parent="OverDotsBar"]
 layout_mode = 2
@@ -221,14 +210,30 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 20.0
-offset_top = -80.0
+offset_top = -104.0
 offset_right = -20.0
-offset_bottom = -10.0
+offset_bottom = -34.0
 
 [node name="CommentaryText" type="Label" parent="CommentaryBox"]
 layout_mode = 2
 text = "Match is about to begin..."
 autowrap_mode = 2
+
+[node name="ControlsHint" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -28.0
+offset_right = -20.0
+offset_bottom = -8.0
+text = "⌨️ 1-6 bat/bowl • SPACE block • C wagon • F fast • ESC menu"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.545, 0.58, 0.624, 0.8)
+theme_override_font_sizes/font_size = 12
+tooltip_text = "Your controls"
 
 [node name="ShotSelectionPanel" type="PanelContainer" parent="."]
 visible = false
@@ -252,13 +257,6 @@ theme_override_font_sizes/font_size = 16
 [node name="Countdown" type="Label" parent="ShotSelectionPanel/ShotVBox"]
 layout_mode = 2
 text = "6.0s — press 1-6 or CLICK!"
-horizontal_alignment = 1
-theme_override_colors/font_color = Color(1, 0.839, 0, 1)
-theme_override_font_sizes/font_size = 15
-
-[node name="Countdown" type="Label" parent="ShotSelectionPanel/ShotVBox"]
-layout_mode = 2
-text = "7.0s — press 1-6 or CLICK!"
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(1, 0.839, 0, 1)
 theme_override_font_sizes/font_size = 15
@@ -326,13 +324,6 @@ horizontal_alignment = 1
 theme_override_colors/font_color = Color(1, 0.839, 0, 1)
 theme_override_font_sizes/font_size = 15
 
-[node name="BowlCountdown" type="Label" parent="BowlSelectionPanel/BowlVBox"]
-layout_mode = 2
-text = "7.0s — press 1-4 or CLICK!"
-horizontal_alignment = 1
-theme_override_colors/font_color = Color(1, 0.839, 0, 1)
-theme_override_font_sizes/font_size = 15
-
 [node name="TimerBar" type="ProgressBar" parent="BowlSelectionPanel/BowlVBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 12)
@@ -389,9 +380,9 @@ anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -170.0
-offset_top = 330.0
+offset_top = 318.0
 offset_right = 170.0
-offset_bottom = 368.0
+offset_bottom = 352.0
 self_modulate = Color(1, 1, 1, 0.88)
 
 [node name="DeliveryName" type="Label" parent="DeliveryAlert"]
@@ -401,8 +392,21 @@ text = "🏏 YORKER !"
 theme_override_colors/font_color = Color(1, 0.839, 0, 1)
 theme_override_font_sizes/font_size = 22
 
-[node name="OverSummaryPopup" type="PanelContainer" parent="."]
+[node name="OverSummaryPopup" type="Control" parent="."]
 visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="OverDim" type="ColorRect" parent="OverSummaryPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.55)
+
+[node name="Panel" type="PanelContainer" parent="OverSummaryPopup"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -410,24 +414,43 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -200.0
-offset_top = -70.0
+offset_top = -90.0
 offset_right = 200.0
-offset_bottom = 70.0
+offset_bottom = 90.0
 
-[node name="Content" type="Label" parent="OverSummaryPopup"]
+[node name="Content" type="Label" parent="OverSummaryPopup/Panel"]
 layout_mode = 2
 horizontal_alignment = 1
 text = "End of Over"
 autowrap_mode = 2
 
-[node name="InningsBreakPopup" type="PanelContainer" parent="."]
+[node name="InningsBreakPopup" type="Control" parent="."]
 visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 
-[node name="BreakContent" type="Label" parent="InningsBreakPopup"]
+[node name="BreakDim" type="ColorRect" parent="InningsBreakPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.65)
+
+[node name="BreakPanel" type="PanelContainer" parent="InningsBreakPopup"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -140.0
+offset_right = 280.0
+offset_bottom = 140.0
+
+[node name="BreakContent" type="Label" parent="InningsBreakPopup/BreakPanel"]
 layout_mode = 2
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -615,57 +638,4 @@ layout_mode = 2
 size_flags_horizontal = 4
 text = "🏏 GOT IT — LET ME BAT!"
 tooltip_text = "Start your shot timer"
-
-[node name="CoachPopup" type="Control" parent="."]
-visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-
-[node name="CoachDim" type="ColorRect" parent="CoachPopup"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.72)
-
-[node name="CoachPanel" type="PanelContainer" parent="CoachPopup"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -300.0
-offset_top = -150.0
-offset_right = 300.0
-offset_bottom = 150.0
-
-[node name="CoachVBox" type="VBoxContainer" parent="CoachPopup/CoachPanel"]
-layout_mode = 2
-theme_override_constants/separation = 14
-alignment = 1
-
-[node name="CoachTitle" type="Label" parent="CoachPopup/CoachPanel/CoachVBox"]
-layout_mode = 2
-text = "🏏 YOUR TURN TO BAT!"
-horizontal_alignment = 1
-theme_override_colors/font_color = Color(0, 0.784, 0.325, 1)
-theme_override_font_sizes/font_size = 26
-
-[node name="CoachBody" type="Label" parent="CoachPopup/CoachPanel/CoachVBox"]
-layout_mode = 2
-text = "The bowler is running in — YOU play the shot!\n\nPress 1-6 (or CLICK a shot below).\nSPACE = safe block. Miss the timer and the AI blocks for you."
-horizontal_alignment = 1
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 16
-autowrap_mode = 2
-
-[node name="CoachBtn" type="Button" parent="CoachPopup/CoachPanel/CoachVBox"]
-custom_minimum_size = Vector2(280, 56)
-layout_mode = 2
-size_flags_horizontal = 4
-text = "🏏 GOT IT — LET ME BAT!"
-tooltip_text = "Start your 7-second shot timer"
 

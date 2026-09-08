@@ -61,6 +61,7 @@ func start_match(team_a: TeamData, team_b: TeamData, format: int,
 		human_team: TeamData = null, human_plays_bowling: bool = true,
 		hotseat_mode: bool = false) -> void:
 	_match_gen += 1  # Any ball-flow coroutines still awaiting from the last match now abort.
+	fast_forward = false  # Never leak the speed toggle into a new match
 	GameManager.start_new_match(team_a, team_b, format)
 	GameManager.remove_meta("match_tied")
 	human_side = human_team
@@ -99,6 +100,7 @@ func abort_match() -> void:
 	_match_gen += 1
 	_match_pending = false
 	_net_wait = false
+	fast_forward = false
 	current_state = State.IDLE
 	is_human_batting = false
 	is_human_bowling = false

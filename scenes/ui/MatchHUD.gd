@@ -60,9 +60,7 @@ var commentary_tween: Tween = null
 @onready var btn_drs_no := $DRSPopup/DRSPanel/DRSVBox/DRSBtns/DRSNoBtn
 
 # ─── Status indicators ───
-@onready var lbl_weather := $StatusBar/Weather
-@onready var lbl_pitch := $StatusBar/Pitch
-@onready var lbl_pressure := $StatusBar/Pressure
+@onready var lbl_conditions := $StatusBar/Conditions
 @onready var lbl_momentum := $StatusBar/Momentum
 @onready var lbl_drs := $StatusBar/DRS
 @onready var btn_ff := $StatusBar/FFBtn
@@ -98,17 +96,26 @@ var _partnership_milestone_shown: int = 0
 
 # ─── Over Summary Popup ───
 @onready var over_summary_popup := $OverSummaryPopup
-@onready var lbl_over_summary := $OverSummaryPopup/Content
+@onready var lbl_over_summary := $OverSummaryPopup/Panel/Content
 
 # ─── Innings Break Popup ───
 @onready var innings_break_popup := $InningsBreakPopup
-@onready var lbl_innings_break := $InningsBreakPopup/BreakContent
+@onready var lbl_innings_break := $InningsBreakPopup/BreakPanel/BreakContent
 
 var selection_timer: Timer = null
 var bowl_timer: Timer = null
 var drs_timer: Timer = null
+# Panel tween handles — killed on hide so a stale tween never fights a new one.
+var _shot_tween: Tween = null
+var _bowl_tween: Tween = null
+var _delivery_tween: Tween = null
+
+func _kill(t: Tween) -> void:
+	if t and t.is_valid():
+		t.kill()
 var is_waiting_for_input: bool = false
 var is_waiting_for_bowl: bool = false
+var _queued_shot: int = -1  # Press during run-up → locked in, applied when the panel opens
 var bowl_options: Array[int] = []
 var _pending_bowl: int = -1  # Hot-seat: locked-in delivery awaiting the handoff tap
 var _weather_pitch := WeatherPitchSystem.new()
@@ -338,9 +345,10 @@ func _update_display_net() -> void:
 	lbl_rrr.text = "RRR: " + str(snapped(float(s.get("rrr", 0.0)), 0.01))
 	lbl_partnership.text = "Partnership: " + str(int(s.get("partnership", 0)))
 	
-	lbl_weather.text = "☁️ " + _weather_pitch.get_weather_name(int(s.get("weather", 0)))
-	lbl_pitch.text = "🏟️ " + _weather_pitch.get_pitch_name(int(s.get("pitch_type", 0)))
-	lbl_pressure.text = "📊 Pressure: " + str(snapped(float(s.get("pressure", 0.0)) * 100, 1)) + "%"
+	lbl_conditions.text = "☁️ %s  🏟️ %s  📊 %d%%" % [
+		_weather_pitch.get_weather_name(int(s.get("weather", 0))),
+		_weather_pitch.get_pitch_name(int(s.get("pitch_type", 0))),
+		int(snapped(float(s.get("pressure", 0.0)) * 100, 1))]
 	var max_r = int(s.get("drs_max", 1))
 	lbl_drs.text = "DRS: " + "🟢".repeat(int(s.get("drs_batting", 0))) + "🔴".repeat(maxi(0, max_r - int(s.get("drs_batting", 0))))
 	
@@ -360,10 +368,52 @@ func _process(_delta: float) -> void:
 		bowl_countdown.text = "%.1fs — press 1-4 or CLICK!" % bowl_timer.time_left
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Global shortcuts (work any time no modal is up)
+	if event.is_action_pressed("ui_cancel"):
+		if coach_popup.visible:
+			_on_coach_dismissed()
+		elif quit_confirm.visible:
+			quit_confirm.visible = false
+		elif over_summary_popup.visible or innings_break_popup.visible:
+			_dismiss_info_popups()
+		elif not _match_done:
+			_on_quit_pressed()
+		return
+	if event.is_action_pressed("ff_toggle") and not coach_popup.visible and not quit_confirm.visible:
+		btn_ff.set_pressed_no_signal(not btn_ff.button_pressed)
+		_on_ff_toggled(btn_ff.button_pressed)
+		return
+	if event.is_action_pressed("wagon_toggle") and field_view:
+		btn_wagon.set_pressed_no_signal(not btn_wagon.button_pressed)
+		btn_wagon.toggled.emit(btn_wagon.button_pressed)
+		return
+	# Any modal that's up: SPACE dismisses it (popups never hold the game hostage).
+	if event.is_action_pressed("ui_accept") and not is_waiting_for_input and not is_waiting_for_bowl \
+			and not coach_popup.visible and _pending_bowl < 0 \
+			and (over_summary_popup.visible or innings_break_popup.visible):
+		_dismiss_info_popups()
+		return
 	if coach_popup.visible:
 		# Coach up: SPACE/ENTER dismisses it and starts the timer.
 		if event.is_action_pressed("ui_accept"):
 			_on_coach_dismissed()
+		return
+	# Pre-lock: press during the bowler's run-up and it's queued, not dropped.
+	# Only while a ball is live (run-up / awaiting reveal) — never between balls.
+	var ball_live := MatchEngine.current_state in [
+		MatchEngine.State.BOWLING_APPROACH, MatchEngine.State.WAITING_FOR_SHOT]
+	if not is_waiting_for_input and not is_waiting_for_bowl and _queued_shot < 0 and ball_live:
+		var early := -1
+		if event.is_action_pressed("shot_1"): early = Constants.ShotType.AGGRESSIVE_DRIVE
+		elif event.is_action_pressed("shot_2"): early = Constants.ShotType.PULL_SHOT
+		elif event.is_action_pressed("shot_3"): early = Constants.ShotType.SWEEP_SHOT
+		elif event.is_action_pressed("shot_4"): early = Constants.ShotType.LOFT_SLOG
+		elif event.is_action_pressed("shot_5"): early = Constants.ShotType.DEFENSIVE_BLOCK
+		elif event.is_action_pressed("shot_6"): early = Constants.ShotType.LEAVE_BALL
+		elif event.is_action_pressed("ui_accept"): early = Constants.ShotType.DEFENSIVE_BLOCK
+		if early >= 0 and MatchEngine.is_human_batting:
+			_queued_shot = early
+			AudioManager.play_click()
 		return
 	if is_waiting_for_input:
 		if event.is_action_pressed("shot_1"): _select_shot(Constants.ShotType.AGGRESSIVE_DRIVE)
@@ -382,15 +432,40 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _pending_bowl >= 0 and event.is_action_pressed("ui_accept"):
 		_on_bowl_ready()
 
+func _dismiss_info_popups() -> void:
+	over_summary_popup.visible = false
+	innings_break_popup.visible = false
+
+# Awaitable wait that ends early when the player dismisses (click/SPACE/ESC).
+# Popups must never hold the game hostage — always tappable/skippable.
+func _dismissible_wait(seconds: float, popup: Control) -> void:
+	popup.visible = true
+	popup.gui_input.connect(_on_info_popup_input)
+	var t0 := Time.get_ticks_msec()
+	while popup.visible and Time.get_ticks_msec() - t0 < seconds * 1000.0:
+		await get_tree().process_frame
+	popup.visible = false
+	if popup.gui_input.is_connected(_on_info_popup_input):
+		popup.gui_input.disconnect(_on_info_popup_input)
+
+func _on_info_popup_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed:
+		_dismiss_info_popups()
+	elif event is InputEventKey and event.pressed and event.keycode in [KEY_SPACE, KEY_ENTER, KEY_ESCAPE]:
+		_dismiss_info_popups()
+
 func _show_delivery_alert(delivery_name: String) -> void:
+	# New ball: any pre-lock older than this delivery is stale.
+	_queued_shot = -1
 	# Flash the delivery type on screen
 	delivery_alert.visible = true
 	lbl_delivery_name.text = "🏏 " + delivery_name + " !"
 	
-	# Animate scale
+	# Animate scale (kill any in-flight alert tween first)
+	_kill(_delivery_tween)
 	delivery_alert.scale = Vector2(0.5, 0.5)
-	var tw = create_tween()
-	tw.tween_property(delivery_alert, "scale", Vector2(1.0, 1.0), 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	_delivery_tween = create_tween()
+	_delivery_tween.tween_property(delivery_alert, "scale", Vector2(1.0, 1.0), 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 
 func _show_shot_selection(delivery_name: String) -> void:
 	is_waiting_for_input = true
@@ -400,7 +475,7 @@ func _show_shot_selection(delivery_name: String) -> void:
 	if MatchEngine.hotseat and GameManager.batting_team:
 		shot_title.text = "⚡ %s — REACT — CHOOSE YOUR SHOT" % GameManager.batting_team.team_name.to_upper()
 	else:
-		shot_title.text = "⚡ YOUR TURN — CHOOSE YOUR SHOT"
+		shot_title.text = "⚡ %s BATTING — YOU BAT!" % GameManager.batting_team.team_name.to_upper()
 
 	# First ball YOU bat in the session: hold the timer and teach the controls.
 	# (Skipped while fast-forwarding — that player already knows the game.)
@@ -411,6 +486,13 @@ func _show_shot_selection(delivery_name: String) -> void:
 			"🏏 GOT IT — LET ME BAT!")
 		shot_countdown.text = "Read this first — your timer starts when you dismiss it!"
 		return
+	# Pre-locked shot from the run-up? Play it instantly (no timer panic).
+	if _queued_shot >= 0:
+		var q := _queued_shot
+		_queued_shot = -1
+		is_waiting_for_input = true
+		_select_shot(q)
+		return
 	_start_shot_timer()
 
 func _start_shot_timer() -> void:
@@ -418,9 +500,9 @@ func _start_shot_timer() -> void:
 	timer_bar.value = 100.0
 	selection_timer.wait_time = window
 	selection_timer.start()
-	# Animate timer bar (matches the difficulty window)
-	var tw = create_tween()
-	tw.tween_property(timer_bar, "value", 0.0, window)
+	_kill(_shot_tween)
+	_shot_tween = create_tween()
+	_shot_tween.tween_property(timer_bar, "value", 0.0, window)
 
 func _show_coach(kind: String, title: String, body: String, btn_text: String) -> void:
 	_coach_kind = kind
@@ -517,8 +599,9 @@ func _start_bowl_timer() -> void:
 	bowl_timer_bar.value = 100.0
 	bowl_countdown.text = "%.1fs — press 1-4 or CLICK!" % window
 	bowl_timer.wait_time = window
-	var tw = create_tween()
-	tw.tween_property(bowl_timer_bar, "value", 0.0, window)
+	_kill(_bowl_tween)
+	_bowl_tween = create_tween()
+	_bowl_tween.tween_property(bowl_timer_bar, "value", 0.0, window)
 	bowl_timer.start()
 
 func _select_bowl(idx: int) -> void:
@@ -628,6 +711,7 @@ func _on_ff_toggled(pressed: bool) -> void:
 func _on_quit_pressed() -> void:
 	AudioManager.play_click()
 	quit_confirm.visible = true
+	btn_quit_no.grab_focus()  # Safe default: keep playing
 
 func _on_quit_confirmed() -> void:
 	AudioManager.play_click()
@@ -720,9 +804,10 @@ func _update_display() -> void:
 	lbl_partnership.text = "Partnership: " + str(GameManager.get_partnership_runs())
 	
 	# Status bar
-	lbl_weather.text = "☁️ " + _weather_pitch.get_weather_name(GameManager.weather)
-	lbl_pitch.text = "🏟️ " + _weather_pitch.get_pitch_name(GameManager.pitch_type)
-	lbl_pressure.text = "📊 Pressure: " + str(snapped(GameManager.batting_pressure * 100, 1)) + "%"
+	lbl_conditions.text = "☁️ %s  🏟️ %s  📊 %d%%" % [
+		_weather_pitch.get_weather_name(GameManager.weather),
+		_weather_pitch.get_pitch_name(GameManager.pitch_type),
+		int(snapped(GameManager.batting_pressure * 100, 1))]
 	var max_reviews = GameManager.get_max_reviews()
 	lbl_drs.text = "DRS: " + "🟢".repeat(GameManager.drs_reviews_batting) + "🔴".repeat(maxi(0, max_reviews - GameManager.drs_reviews_batting))
 	
@@ -761,6 +846,13 @@ func _add_over_dot(outcome: Dictionary) -> void:
 		dot_label.text = " " + str(runs) + " "
 		dot_label.add_theme_color_override("font_color", Constants.COLOR_ACCENT_GREEN)
 	
+	# An over can run long on wides/no-balls — show only the legal 6 (+1 marker
+	# hint) so the bar never overflows the screen.
+	if over_dots_container.get_child_count() >= 7:
+		var hint := over_dots_container.get_child(6)
+		if hint is Label:
+			hint.text = " + "
+		return
 	over_dots_container.add_child(dot_label)
 
 func _show_commentary(outcome: Dictionary) -> void:
@@ -837,7 +929,9 @@ func _show_commentary(outcome: Dictionary) -> void:
 	if commentary_tween:
 		commentary_tween.kill()
 	commentary_tween = create_tween()
-	commentary_tween.tween_property(commentary_label, "visible_characters", text.length(), text.length() * Constants.TYPEWRITER_SPEED)
+	# FF compresses the typewriter too — commentary must never lag behind the next ball
+	var speed := Constants.TYPEWRITER_SPEED * (0.15 if MatchEngine.fast_forward else 1.0)
+	commentary_tween.tween_property(commentary_label, "visible_characters", text.length(), text.length() * speed)
 
 func _on_over_ended(summary: Dictionary) -> void:
 	# Clear over dots
@@ -863,9 +957,9 @@ func _on_over_ended(summary: Dictionary) -> void:
 				text += "\n🥤 Drinks break — players refresh."
 	lbl_over_summary.text = text
 	AudioManager.play_click()
+	lbl_over_summary.text = text + "\n\n(click / SPACE to continue)"
 	
-	await get_tree().create_timer(0.3 if MatchEngine.fast_forward else 2.0).timeout
-	over_summary_popup.visible = false
+	_dismissible_wait(0.3 if MatchEngine.fast_forward else 2.0, over_summary_popup)
 
 func _on_second_innings_starting() -> void:
 	# Show innings break overlay
@@ -876,8 +970,7 @@ func _on_second_innings_starting() -> void:
 		tail = "AI batting — you bowl!"
 	lbl_innings_break.text = "INNINGS BREAK\n\n" + GameManager.bowling_team.team_name + " need " + str(target) + " to win!\n\n" + tail
 	
-	await get_tree().create_timer(0.5 if MatchEngine.fast_forward else 3.0).timeout
-	innings_break_popup.visible = false
+	_dismissible_wait(0.5 if MatchEngine.fast_forward else 3.0, innings_break_popup)
 
 # Field-view side of the innings break: fresh wagon wheel + partnership tracker.
 func _on_second_innings_for_field() -> void:
@@ -889,8 +982,7 @@ func _show_innings_break_net(target: int) -> void:
 	innings_break_popup.visible = true
 	var tail := "AI vs AI in progress…" if NetworkManager.my_team_name() == "" else "Chase is on!"
 	lbl_innings_break.text = "INNINGS BREAK\n\nTarget: %d to win!\n\n%s" % [target, tail]
-	await get_tree().create_timer(0.5 if MatchEngine.fast_forward else 3.0).timeout
-	innings_break_popup.visible = false
+	_dismissible_wait(0.5 if MatchEngine.fast_forward else 3.0, innings_break_popup)
 
 func _on_net_match_end(event: Dictionary) -> void:
 	_match_done = true
@@ -921,8 +1013,7 @@ func _on_super_over_for_field(round_no: int) -> void:
 	if round_no > 1:
 		msg = "⚡ SUPER OVER %d ⚡\n\nTied again — sudden death!\n\n%s bat first" % [round_no, batting_name]
 	lbl_innings_break.text = msg
-	await get_tree().create_timer(0.5 if MatchEngine.fast_forward else 2.5).timeout
-	innings_break_popup.visible = false
+	_dismissible_wait(0.5 if MatchEngine.fast_forward else 2.5, innings_break_popup)
 
 func _on_innings_ended(scorecard: Dictionary) -> void:
 	# Don't transition away — MatchEngine handles the flow

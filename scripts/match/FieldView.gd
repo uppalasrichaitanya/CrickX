@@ -50,11 +50,16 @@ var burst: CPUParticles2D = null
 var stumps_top: Node2D = null
 var stumps_bot: Node2D = null
 var flash: ColorRect = null
+var shake_anchor: Node2D = null  # shake target — contents, not the HUD band
 
 var wagon_lines: Array[Dictionary] = []   # {from: Vector2, to: Vector2, runs: int}
 var show_wagon: bool = false
 
 func _ready() -> void:
+	# Everything visible lives under shake_anchor so screen-shake can rattle
+	# the scene contents without sliding the HUD band itself.
+	shake_anchor = Node2D.new()
+	add_child(shake_anchor)
 	_build_markers()
 	_setup_flash()
 	_reset_positions()
@@ -110,10 +115,10 @@ func _draw_wagon() -> void:
 const ZONE_ANGLES: Dictionary = {
 	Constants.FieldZone.MID_ON: 0.55,
 	Constants.FieldZone.LONG_ON: 0.32,
-	Constants.FieldZone.MID_WICKET: -0.55,
+	Constants.FieldZone.MID_WICKET: -0.30,
 	Constants.FieldZone.SQUARE_LEG: -1.25,
 	Constants.FieldZone.FINE_LEG: -2.05,
-	Constants.FieldZone.MID_OFF: -0.55,
+	Constants.FieldZone.MID_OFF: -0.75,
 	Constants.FieldZone.COVER: -1.05,
 	Constants.FieldZone.POINT: -1.70,
 }
@@ -154,11 +159,11 @@ func _build_markers() -> void:
 		fielders.append(f)
 	# Ball + shadow
 	ball = Node2D.new()
-	add_child(ball)
+	shake_anchor.add_child(ball)
 	var b := _draw_dot(BALL_C, 5.0)
 	ball.add_child(b)
 	ball_shadow = Node2D.new()
-	add_child(ball_shadow)
+	shake_anchor.add_child(ball_shadow)
 	ball_shadow.add_child(_draw_dot(Color(0, 0, 0, 0.3), 4.0))
 	# Stumps groups
 	stumps_top = _make_stumps(BOWLER_END)
@@ -175,12 +180,12 @@ func _build_markers() -> void:
 	burst.scale_amount_min = 0.6
 	burst.scale_amount_max = 1.6
 	burst.color = Color(1, 0.84, 0.0)
-	add_child(burst)
+	shake_anchor.add_child(burst)
 
 func _make_marker(color: Color, radius: float) -> Node2D:
 	var n := Node2D.new()
 	n.add_child(_draw_dot(color, radius))
-	add_child(n)
+	shake_anchor.add_child(n)
 	return n
 
 func _draw_dot(color: Color, radius: float) -> Node2D:
@@ -198,7 +203,7 @@ func _make_stumps(at: Vector2) -> Node2D:
 		s.dot_radius = 2.0
 		s.position = Vector2((i - 1) * 4.0, 0)
 		g.add_child(s)
-	add_child(g)
+	shake_anchor.add_child(g)
 	return g
 
 func _setup_flash() -> void:
@@ -465,15 +470,17 @@ func _screen_flash(strength: float, color: Color = Color(1, 1, 1, 1)) -> void:
 	tw.tween_property(flash, "color:a", 0.0, 0.35 * _speed_scale())
 
 # Camera shake on big moments (wickets, sixes). Skipped in fast-forward.
+# Shakes a dedicated offset child, never `self` — the HUD band anchor must
+# stay put or the oval visibly slides around.
 func _screen_shake(strength: float = 6.0) -> void:
 	if MatchEngine.fast_forward:
 		return
-	var base := position
+	var base := shake_anchor.position
 	var tw := create_tween()
 	for i in range(5):
 		var off := Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
-		tw.tween_property(self, "position", base + off, 0.04)
-	tw.tween_property(self, "position", base, 0.06)
+		tw.tween_property(shake_anchor, "position", base + off, 0.04)
+	tw.tween_property(shake_anchor, "position", base, 0.06)
 
 # Milestone fanfare — bigger, golden, centered on the striker
 func play_fireworks() -> void:
@@ -488,7 +495,7 @@ func play_fireworks() -> void:
 	second.initial_velocity_max = 220.0
 	second.color = Color(1, 0.5, 0.1)
 	second.position = striker_m.position
-	add_child(second)
+	shake_anchor.add_child(second)
 	second.restart()
 	var tw := create_tween()
 	tw.tween_interval(1.2 * _speed_scale())

@@ -87,7 +87,21 @@ func _run() -> void:
 	_check(hud.has_node("CoachPopup/CoachPanel/CoachVBox/CoachBtn"), "CoachBtn missing")
 	_check(hud.has_node("ShotSelectionPanel/ShotVBox/Countdown"), "Shot Countdown label missing")
 	_check(hud.has_node("BowlSelectionPanel/BowlVBox/BowlCountdown"), "BowlCountdown label missing")
-	_check(hud.has_node("StatusBar/ControlsHint"), "ControlsHint legend missing")
+	_check(hud.has_node("ControlsHint"), "ControlsHint legend missing (moved to commentary strip)")
+	# 6b. Declutter regression: no duplicate-name siblings under the HUD root,
+	#     merged Conditions label exists, popups have dims.
+	var names := {}
+	for child in hud.get_children():
+		if child.name in names:
+			_failures.append("duplicate node name: " + child.name)
+		names[child.name] = true
+	_check(hud.has_node("StatusBar/Conditions"), "merged Conditions label missing")
+	_check(hud.get_node("OverSummaryPopup/OverDim") != null, "OverSummaryPopup must dim the field")
+	_check(hud.get_node("InningsBreakPopup/BreakDim") != null, "InningsBreakPopup must dim the field")
+	# 6c. Engine must reset fast_forward between matches (stale-acceleration bug).
+	engine.fast_forward = true
+	engine.abort_match()
+	_check(not engine.fast_forward, "abort_match must reset fast_forward")
 	var consts = root.get_node("Constants")
 	_check(consts.human_input_timeout(0) == 8.0, "Easy timeout must be 8s")
 	_check(consts.human_input_timeout(1) == 6.0, "Medium timeout must be 6s")
