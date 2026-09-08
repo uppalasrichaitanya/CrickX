@@ -46,14 +46,16 @@ custom_minimum_size = Vector2(350, 0)
 
 [node name="LabelA" type="Label" parent="HBoxContainer/TeamAPanel"]
 layout_mode = 2
-text = "YOUR TEAM"
+text = "🎮 YOUR TEAM (YOU play this side)"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_colors/font_color = Color(0, 0.784, 0.325, 1)
 theme_override_font_sizes/font_size = 20
+tooltip_text = "The team YOU control with 1-6 / clicks"
 
 [node name="TeamAList" type="ItemList" parent="HBoxContainer/TeamAPanel"]
 layout_mode = 2
 size_flags_vertical = 3
+tooltip_text = "Click to pick the team YOU play as"
 
 [node name="VSLabel" type="Label" parent="HBoxContainer"]
 layout_mode = 2
@@ -68,14 +70,16 @@ custom_minimum_size = Vector2(350, 0)
 
 [node name="LabelB" type="Label" parent="HBoxContainer/TeamBPanel"]
 layout_mode = 2
-text = "OPPONENT"
+text = "🤖 OPPONENT (AI-controlled)"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_colors/font_color = Color(1, 0.098, 0.267, 1)
 theme_override_font_sizes/font_size = 20
+tooltip_text = "The AI-controlled opposition"
 
 [node name="TeamBList" type="ItemList" parent="HBoxContainer/TeamBPanel"]
 layout_mode = 2
 size_flags_vertical = 3
+tooltip_text = "Click to pick the AI opponent"
 
 [node name="SetupRow" type="HBoxContainer" parent="."]
 layout_mode = 1
@@ -106,6 +110,23 @@ text = "Mode"
 [node name="ModeBtn" type="OptionButton" parent="SetupRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(190, 0)
+
+[node name="ModeDesc" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -350.0
+offset_top = -172.0
+offset_right = 350.0
+offset_bottom = -148.0
+text = "🎮 YOU play every ball YOUR TEAM bats. AI handles the bowling."
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.545, 0.58, 0.624, 1)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 2
 
 [node name="WarningLabel" type="Label" parent="."]
 visible = false

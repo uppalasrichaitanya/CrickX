@@ -74,6 +74,16 @@ var commentary_tween: Tween = null
 @onready var btn_quit_yes := $QuitConfirm/QuitPanel/QuitVBox/QuitBtns/QuitYesBtn
 @onready var btn_quit_no := $QuitConfirm/QuitPanel/QuitVBox/QuitBtns/QuitNoBtn
 
+# ─── First-ball coach marks (onboarding overlay) ───
+@onready var coach_popup := $CoachPopup
+@onready var coach_panel := $CoachPopup/CoachPanel
+@onready var coach_btn := $CoachPopup/CoachPanel/CoachVBox/CoachBtn
+@onready var shot_countdown := $ShotSelectionPanel/ShotVBox/Countdown
+@onready var bowl_countdown := $BowlSelectionPanel/BowlVBox/BowlCountdown
+# Once per app run — static so it survives scene reloads between matches.
+static var _coach_seen: bool = false
+var _coach_pulse: Tween = null
+
 # ─── Field View ───
 var field_view: FieldView = null
 var _partnership_milestone_shown: int = 0
@@ -140,16 +150,17 @@ func _ready() -> void:
 	btn_shot_5.tooltip_text = "Defensive block. Safe shot, survive the delivery."
 	btn_shot_6.tooltip_text = "Leave the ball. Safe if outside off, risky if on stumps."
 	
-	# Selection timer (time to react, from Constants)
+	# Selection timer — generous human window (Constants.HUMAN_INPUT_TIMEOUT).
+	# The old 4s silent fallback is what made the game look autoplayed.
 	selection_timer = Timer.new()
-	selection_timer.wait_time = Constants.SHOT_SELECTION_TIMEOUT
+	selection_timer.wait_time = Constants.HUMAN_INPUT_TIMEOUT
 	selection_timer.one_shot = true
 	selection_timer.timeout.connect(_on_selection_timeout)
 	add_child(selection_timer)
-	
-	# Bowl selection timer (same window as shots)
+
+	# Bowl selection timer (same human window as shots)
 	bowl_timer = Timer.new()
-	bowl_timer.wait_time = Constants.SHOT_SELECTION_TIMEOUT
+	bowl_timer.wait_time = Constants.HUMAN_INPUT_TIMEOUT
 	bowl_timer.one_shot = true
 	bowl_timer.timeout.connect(_on_bowl_timeout)
 	add_child(bowl_timer)
@@ -186,6 +197,10 @@ func _ready() -> void:
 	btn_quit_yes.pressed.connect(_on_quit_confirmed)
 	btn_quit_no.pressed.connect(func(): quit_confirm.visible = false)
 	quit_confirm.visible = false
+
+	# First-ball coach overlay (onboarding — once per app run)
+	coach_btn.pressed.connect(_on_coach_dismissed)
+	coach_popup.visible = false
 	
 	# Field view (visual match rendering in the center band)
 	var fv_scene = load("res://scenes/match/FieldView.tscn")
@@ -330,7 +345,19 @@ func _update_display_net() -> void:
 	else:
 		lbl_momentum.text = "⚡ Even"
 
+func _process(_delta: float) -> void:
+	# Visible countdown so the timer never fires "silently" again.
+	if is_waiting_for_input and not selection_timer.is_stopped():
+		shot_countdown.text = "%.1fs — press 1-6 or CLICK!  (SPACE = block)" % selection_timer.time_left
+	elif is_waiting_for_bowl and not bowl_timer.is_stopped():
+		bowl_countdown.text = "%.1fs — press 1-4 or CLICK!" % bowl_timer.time_left
+
 func _unhandled_input(event: InputEvent) -> void:
+	if coach_popup.visible:
+		# Coach up: SPACE/ENTER dismisses it and starts the timer.
+		if event.is_action_pressed("ui_accept"):
+			_on_coach_dismissed()
+		return
 	if is_waiting_for_input:
 		if event.is_action_pressed("shot_1"): _select_shot(Constants.ShotType.AGGRESSIVE_DRIVE)
 		elif event.is_action_pressed("shot_2"): _select_shot(Constants.ShotType.PULL_SHOT)
@@ -338,6 +365,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.is_action_pressed("shot_4"): _select_shot(Constants.ShotType.LOFT_SLOG)
 		elif event.is_action_pressed("shot_5"): _select_shot(Constants.ShotType.DEFENSIVE_BLOCK)
 		elif event.is_action_pressed("shot_6"): _select_shot(Constants.ShotType.LEAVE_BALL)
+		elif event.is_action_pressed("ui_accept"):
+			_select_shot(Constants.ShotType.DEFENSIVE_BLOCK)  # SPACE = safe block
 	elif is_waiting_for_bowl:
 		for i in range(4):
 			if i < bowl_options.size() and event.is_action_pressed("shot_%d" % (i + 1)):
@@ -363,12 +392,46 @@ func _show_shot_selection(delivery_name: String) -> void:
 	lbl_delivery_name.text = "⚡ " + delivery_name + " — REACT!"
 	if MatchEngine.hotseat and GameManager.batting_team:
 		shot_title.text = "⚡ %s — REACT — CHOOSE YOUR SHOT" % GameManager.batting_team.team_name.to_upper()
-	
+	else:
+		shot_title.text = "⚡ YOUR TURN — CHOOSE YOUR SHOT"
+
+	# First ball of the session: hold the timer and teach the controls.
+	# (Skipped while fast-forwarding — that player already knows the game.)
+	if not _coach_seen and not MatchEngine.fast_forward:
+		coach_popup.visible = true
+		coach_btn.grab_focus()
+		shot_countdown.text = "Read this first — your timer starts when you dismiss it!"
+		_stop_coach_pulse()
+		_coach_pulse = create_tween().set_loops()
+		_coach_pulse.tween_property(coach_panel, "scale", Vector2(1.03, 1.03), 0.45)
+		_coach_pulse.tween_property(coach_panel, "scale", Vector2(1.0, 1.0), 0.45)
+		return
+	_start_shot_timer()
+
+func _start_shot_timer() -> void:
 	timer_bar.value = 100.0
 	selection_timer.start()
-	# Animate timer bar (matches Constants.SHOT_SELECTION_TIMEOUT)
+	# Animate timer bar (matches Constants.HUMAN_INPUT_TIMEOUT)
 	var tw = create_tween()
-	tw.tween_property(timer_bar, "value", 0.0, Constants.SHOT_SELECTION_TIMEOUT)
+	tw.tween_property(timer_bar, "value", 0.0, Constants.HUMAN_INPUT_TIMEOUT)
+
+func _on_coach_dismissed() -> void:
+	if not coach_popup.visible:
+		return
+	AudioManager.play_click()
+	_coach_seen = true
+	_stop_coach_pulse()
+	coach_popup.visible = false
+	get_viewport().gui_release_focus()
+	if is_waiting_for_input:
+		_start_shot_timer()
+
+func _stop_coach_pulse() -> void:
+	if _coach_pulse and _coach_pulse.is_valid():
+		_coach_pulse.kill()
+	_coach_pulse = null
+	if is_instance_valid(coach_panel):
+		coach_panel.scale = Vector2.ONE
 
 func _select_shot(shot: int) -> void:
 	if not is_waiting_for_input:
@@ -377,6 +440,11 @@ func _select_shot(shot: int) -> void:
 	shot_panel.visible = false
 	delivery_alert.visible = false
 	selection_timer.stop()
+	if coach_popup.visible:
+		_coach_seen = true
+		_stop_coach_pulse()
+		coach_popup.visible = false
+		get_viewport().gui_release_focus()
 	AudioManager.play_click()
 	if net_mode:
 		NetworkManager.send_action({"kind": "shot", "value": shot})
@@ -409,8 +477,9 @@ func _show_bowl_selection() -> void:
 		else:
 			btn.visible = false
 	bowl_timer_bar.value = 100.0
+	bowl_countdown.text = "%.1fs — press 1-4 or CLICK!" % Constants.HUMAN_INPUT_TIMEOUT
 	var tw = create_tween()
-	tw.tween_property(bowl_timer_bar, "value", 0.0, Constants.SHOT_SELECTION_TIMEOUT)
+	tw.tween_property(bowl_timer_bar, "value", 0.0, Constants.HUMAN_INPUT_TIMEOUT)
 	bowl_timer.start()
 
 func _select_bowl(idx: int) -> void:

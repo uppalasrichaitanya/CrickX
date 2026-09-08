@@ -1,16 +1,16 @@
-[gd_resource type="Theme" load_steps=12 format=3]
+[gd_resource type="Theme" load_steps=8 format=3 uid="uid://ce8s3yeqq4k8v"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_disabled"]
 content_margin_left = 16.0
 content_margin_top = 10.0
 content_margin_right = 16.0
 content_margin_bottom = 10.0
-bg_color = Color(0.086, 0.106, 0.133, 1)
+bg_color = Color(0.06, 0.07, 0.09, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.19, 0.212, 0.239, 1)
+border_color = Color(0.13, 0.15, 0.18, 1)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
@@ -32,6 +32,22 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+bg_color = Color(0.086, 0.106, 0.133, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.19, 0.212, 0.239, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
 content_margin_left = 16.0
 content_margin_top = 10.0
@@ -48,21 +64,12 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_disabled"]
-content_margin_left = 16.0
-content_margin_top = 10.0
-content_margin_right = 16.0
-content_margin_bottom = 10.0
-bg_color = Color(0.06, 0.07, 0.09, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.13, 0.15, 0.18, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_bg"]
+bg_color = Color(0.05, 0.06, 0.08, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 content_margin_left = 12.0
@@ -79,13 +86,6 @@ corner_radius_top_left = 10
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_bg"]
-bg_color = Color(0.05, 0.06, 0.08, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_fill"]
 bg_color = Color(0, 0.784, 0.325, 1)
@@ -105,26 +105,26 @@ Button/styles/focus = SubResource("StyleBoxFlat_btn_hover")
 Button/styles/hover = SubResource("StyleBoxFlat_btn_hover")
 Button/styles/normal = SubResource("StyleBoxFlat_btn_normal")
 Button/styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+CheckButton/colors/font_color = Color(1, 1, 1, 1)
+CheckButton/font_sizes/font_size = 14
+HSeparator/styles/separator = SubResource("StyleBoxFlat_bar_bg")
+ItemList/colors/background_color = Color(0.051, 0.067, 0.09, 1)
+ItemList/colors/font_color = Color(1, 1, 1, 1)
+ItemList/colors/font_selected_color = Color(1, 1, 1, 1)
+ItemList/font_sizes/font_size = 14
 Label/colors/font_color = Color(1, 1, 1, 1)
 Label/colors/font_shadow_color = Color(0, 0, 0, 0.6)
 Label/constants/shadow_offset_x = 1
 Label/constants/shadow_offset_y = 1
 Label/font_sizes/font_size = 14
-PanelContainer/styles/panel = SubResource("StyleBoxFlat_panel")
-Panel/styles/panel = SubResource("StyleBoxFlat_panel")
-ProgressBar/styles/background = SubResource("StyleBoxFlat_bar_bg")
-ProgressBar/styles/fill = SubResource("StyleBoxFlat_bar_fill")
-HSeparator/styles/separator = SubResource("StyleBoxFlat_bar_bg")
 OptionButton/colors/font_color = Color(1, 1, 1, 1)
 OptionButton/font_sizes/font_size = 15
-OptionButton/styles/normal = SubResource("StyleBoxFlat_btn_normal")
-OptionButton/styles/hover = SubResource("StyleBoxFlat_btn_hover")
-OptionButton/styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
 OptionButton/styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 OptionButton/styles/focus = SubResource("StyleBoxFlat_btn_hover")
-ItemList/colors/font_color = Color(1, 1, 1, 1)
-ItemList/colors/font_selected_color = Color(1, 1, 1, 1)
-ItemList/colors/background_color = Color(0.051, 0.067, 0.09, 1)
-ItemList/font_sizes/font_size = 14
-CheckButton/colors/font_color = Color(1, 1, 1, 1)
-CheckButton/font_sizes/font_size = 14
+OptionButton/styles/hover = SubResource("StyleBoxFlat_btn_hover")
+OptionButton/styles/normal = SubResource("StyleBoxFlat_btn_normal")
+OptionButton/styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+Panel/styles/panel = SubResource("StyleBoxFlat_panel")
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_panel")
+ProgressBar/styles/background = SubResource("StyleBoxFlat_bar_bg")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_bar_fill")

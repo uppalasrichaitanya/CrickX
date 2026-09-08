@@ -187,7 +187,13 @@ layout_mode = 2
 custom_minimum_size = Vector2(44, 0)
 text = "✕"
 tooltip_text = "Quit match (back to menu)"
-tooltip_text = "Quit match (back to menu)"
+
+[node name="ControlsHint" type="Label" parent="StatusBar"]
+layout_mode = 2
+text = "⌨️ 1-6 / CLICK = bat & bowl • SPACE = block • C = wagon • F = fast • U = DRS"
+theme_override_colors/font_color = Color(0.545, 0.58, 0.624, 1)
+theme_override_font_sizes/font_size = 12
+tooltip_text = "Your controls — this legend is always visible"
 
 [node name="OverDotsBar" type="PanelContainer" parent="."]
 layout_mode = 1
@@ -235,6 +241,13 @@ text = "⚡ REACT — CHOOSE YOUR SHOT"
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0, 0.784, 0.325, 1)
 theme_override_font_sizes/font_size = 16
+
+[node name="Countdown" type="Label" parent="ShotSelectionPanel/ShotVBox"]
+layout_mode = 2
+text = "7.0s — press 1-6 or CLICK!"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_font_sizes/font_size = 15
 
 [node name="TimerBar" type="ProgressBar" parent="ShotSelectionPanel/ShotVBox"]
 layout_mode = 2
@@ -291,6 +304,13 @@ text = "🎳 YOUR TURN — PICK A DELIVERY"
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(1, 0.839, 0, 1)
 theme_override_font_sizes/font_size = 16
+
+[node name="BowlCountdown" type="Label" parent="BowlSelectionPanel/BowlVBox"]
+layout_mode = 2
+text = "7.0s — press 1-4 or CLICK!"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.839, 0, 1)
+theme_override_font_sizes/font_size = 15
 
 [node name="TimerBar" type="ProgressBar" parent="BowlSelectionPanel/BowlVBox"]
 layout_mode = 2
@@ -521,4 +541,57 @@ tooltip_text = "Abandon the match (no result saved)"
 custom_minimum_size = Vector2(150, 48)
 text = "▶ Keep Playing"
 tooltip_text = "Close this dialog and continue"
+
+[node name="CoachPopup" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="CoachDim" type="ColorRect" parent="CoachPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.72)
+
+[node name="CoachPanel" type="PanelContainer" parent="CoachPopup"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -150.0
+offset_right = 300.0
+offset_bottom = 150.0
+
+[node name="CoachVBox" type="VBoxContainer" parent="CoachPopup/CoachPanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="CoachTitle" type="Label" parent="CoachPopup/CoachPanel/CoachVBox"]
+layout_mode = 2
+text = "🏏 YOUR TURN TO BAT!"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0, 0.784, 0.325, 1)
+theme_override_font_sizes/font_size = 26
+
+[node name="CoachBody" type="Label" parent="CoachPopup/CoachPanel/CoachVBox"]
+layout_mode = 2
+text = "The bowler is running in — YOU play the shot!\n\nPress 1-6 (or CLICK a shot below).\nSPACE = safe block. Miss the timer and the AI blocks for you."
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+autowrap_mode = 2
+
+[node name="CoachBtn" type="Button" parent="CoachPopup/CoachPanel/CoachVBox"]
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "🏏 GOT IT — LET ME BAT!"
+tooltip_text = "Start your 7-second shot timer"
 

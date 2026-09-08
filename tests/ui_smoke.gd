@@ -12,7 +12,9 @@ func _initialize() -> void:
 
 func _on_frame_once() -> void:
 	process_frame.disconnect(_on_frame_once)
-	_run()
+	# _run() awaits frames — without await here only section 1 would execute
+	# before the pass/fail print (silent false-green). Await the coroutine.
+	await _run()
 	if _failures.is_empty():
 		print("UI SMOKE: all %d checks passed" % _checks)
 	else:
@@ -76,3 +78,19 @@ func _run() -> void:
 	_check(engine.current_state == 0, "abort_match must leave engine IDLE")
 	_check(engine._match_gen == gen_before + 1, "abort_match must bump _match_gen")
 	_check(not engine.is_human_batting and not engine.is_human_bowling, "abort_match must clear input flags")
+	# 6. Human-control UX: coach overlay starts hidden, countdowns + legend exist,
+	#    human window is the generous 7s constant (not the old silent 4s).
+	_check(hud.has_node("CoachPopup"), "CoachPopup missing")
+	_check(not hud.get_node("CoachPopup").visible, "CoachPopup must start hidden")
+	_check(hud.has_node("ShotSelectionPanel/ShotVBox/Countdown"), "Shot Countdown label missing")
+	_check(hud.has_node("BowlSelectionPanel/BowlVBox/BowlCountdown"), "BowlCountdown label missing")
+	_check(hud.has_node("StatusBar/ControlsHint"), "ControlsHint legend missing")
+	_check(hud.selection_timer.wait_time >= 7.0, "shot timer must use HUMAN_INPUT_TIMEOUT (7s)")
+	_check(hud.bowl_timer.wait_time >= 7.0, "bowl timer must use HUMAN_INPUT_TIMEOUT (7s)")
+	# 7. TeamSelect: mode description + YOU/OPPONENT clarity.
+	var ts = load("res://scenes/ui/TeamSelect.tscn").instantiate()
+	_checks += 1
+	root.add_child(ts)
+	await process_frame
+	_check(ts.has_node("ModeDesc"), "TeamSelect ModeDesc missing")
+	_check(ts.get_node("ModeDesc").text != "", "ModeDesc must show the default mode text")

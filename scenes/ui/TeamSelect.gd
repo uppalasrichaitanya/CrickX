@@ -11,9 +11,16 @@ var hotseat_mode: bool = false
 @onready var team_b_list := $HBoxContainer/TeamBPanel/TeamBList
 @onready var format_btn := $SetupRow/FormatBtn
 @onready var mode_btn := $SetupRow/ModeBtn
+@onready var mode_desc := $ModeDesc
 @onready var warning_label := $WarningLabel
 @onready var btn_start := $BtnStart
 @onready var btn_back := $BtnBack
+
+const MODE_DESCS := {
+	0: "🎮 YOU play every ball YOUR TEAM bats. AI handles the bowling.",
+	1: "🎮 YOU bat AND bowl for YOUR TEAM — full control, both innings.",
+	2: "👥 2 players, 1 device: each side picks in secret, then hands over.",
+}
 
 func _ready() -> void:
 	modulate.a = 0.0
@@ -49,11 +56,19 @@ func _populate_options() -> void:
 	mode_btn.add_item("Full Match (Bat + Bowl)", 1)
 	mode_btn.add_item("Hot-Seat (2 Players)", 2)
 	mode_btn.selected = 0
+	mode_btn.tooltip_text = "Bat vs AI: you bat, AI bowls. Full Match: you do both. Hot-Seat: 2 humans."
+	format_btn.tooltip_text = "Match length: T20 (20 overs) or ODI (50 overs)"
+	_update_mode_desc(0)
 	mode_btn.item_selected.connect(func(idx: int) -> void:
 		var id: int = mode_btn.get_item_id(idx)
 		full_match = id == 1
 		hotseat_mode = id == 2
+		_update_mode_desc(id)
+		AudioManager.play_click()
 	)
+
+func _update_mode_desc(id: int) -> void:
+	mode_desc.text = MODE_DESCS.get(id, "")
 
 func _on_start() -> void:
 	if selected_team_a == selected_team_b:
