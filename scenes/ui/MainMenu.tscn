@@ -76,38 +76,38 @@ theme_override_constants/separation = 15
 [node name="BtnQuickMatch" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)
 layout_mode = 2
-tooltip_text = "Jump straight into a match vs the AI"
 text = "🏏  Quick Match"
+tooltip_text = "Jump straight into a match vs the AI"
 
 [node name="BtnTournament" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)
 layout_mode = 2
-tooltip_text = "World Cup style tournament: 2 groups, semis, final"
 text = "🏆  Tournament"
+tooltip_text = "World Cup style tournament: 2 groups, semis, final"
 
 [node name="BtnMultiplayer" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)
 layout_mode = 2
-tooltip_text = "Play over LAN: host or join a match"
 text = "👥  Multiplayer"
+tooltip_text = "Play over LAN: host or join a match"
 
 [node name="BtnRecords" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)
 layout_mode = 2
-tooltip_text = "All-time career batting and bowling tables"
 text = "📊  Records"
+tooltip_text = "All-time career batting and bowling tables"
 
 [node name="BtnSettings" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)
 layout_mode = 2
-tooltip_text = "Audio, difficulty and display options"
 text = "⚙️  Settings"
+tooltip_text = "Audio, difficulty and display options"
 
 [node name="BtnQuit" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(280, 55)
 layout_mode = 2
-tooltip_text = "Exit the game"
 text = "❌  Quit"
+tooltip_text = "Exit the game"
 
 [node name="VersionLabel" type="Label" parent="."]
 layout_mode = 1

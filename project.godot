@@ -12,10 +12,10 @@ config_version=5
 
 config/name="CrickX"
 config/description="The Ultimate Cricket Experience - Professional 2D Cricket Game"
-run/main_scene="res://scenes/ui/MainMenu.tscn"
-config/features=PackedStringArray("4.2", "Forward Plus")
 boot_splash/bg_color=Color(0.051, 0.067, 0.09, 1)
 boot_splash/show_image=false
+run/main_scene="res://scenes/ui/MainMenu.tscn"
+config/features=PackedStringArray("4.2", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
