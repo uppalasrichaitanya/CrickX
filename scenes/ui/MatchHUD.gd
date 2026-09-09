@@ -364,8 +364,16 @@ func _process(_delta: float) -> void:
 	# Visible countdown so the timer never fires "silently" again.
 	if is_waiting_for_input and not selection_timer.is_stopped():
 		shot_countdown.text = "%.1fs — press 1-6 or CLICK!  (SPACE = block)" % selection_timer.time_left
+		_urgency_tick(selection_timer)
 	elif is_waiting_for_bowl and not bowl_timer.is_stopped():
 		bowl_countdown.text = "%.1fs — press 1-4 or CLICK!" % bowl_timer.time_left
+		_urgency_tick(bowl_timer)
+
+# Audible tick in the final second — once per timer, resets on restart.
+func _urgency_tick(t: Timer) -> void:
+	if t.time_left <= 1.0 and not t.has_meta("ticked"):
+		t.set_meta("ticked", true)
+		AudioManager.play_tick()
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Global shortcuts (work any time no modal is up)
@@ -499,6 +507,8 @@ func _start_shot_timer() -> void:
 	var window := _human_timeout()
 	timer_bar.value = 100.0
 	selection_timer.wait_time = window
+	if selection_timer.has_meta("ticked"):
+		selection_timer.remove_meta("ticked")
 	selection_timer.start()
 	_kill(_shot_tween)
 	_shot_tween = create_tween()
@@ -599,6 +609,8 @@ func _start_bowl_timer() -> void:
 	bowl_timer_bar.value = 100.0
 	bowl_countdown.text = "%.1fs — press 1-4 or CLICK!" % window
 	bowl_timer.wait_time = window
+	if bowl_timer.has_meta("ticked"):
+		bowl_timer.remove_meta("ticked")
 	_kill(_bowl_tween)
 	_bowl_tween = create_tween()
 	_bowl_tween.tween_property(bowl_timer_bar, "value", 0.0, window)

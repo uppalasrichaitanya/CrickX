@@ -103,3 +103,64 @@ custom_minimum_size = Vector2(200, 44)
 layout_mode = 2
 text = "🗑 Reset Records"
 tooltip_text = "Erase all career records permanently"
+
+[node name="ResetConfirm" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="ResetDim" type="ColorRect" parent="ResetConfirm"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.72)
+
+[node name="ResetPanel" type="PanelContainer" parent="ResetConfirm"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -100.0
+offset_right = 220.0
+offset_bottom = 100.0
+
+[node name="ResetVBox" type="VBoxContainer" parent="ResetConfirm/ResetPanel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="ResetTitle" type="Label" parent="ResetConfirm/ResetPanel/ResetVBox"]
+layout_mode = 2
+text = "Erase all career records?"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 0.098, 0.267, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="ResetInfo" type="Label" parent="ResetConfirm/ResetPanel/ResetVBox"]
+layout_mode = 2
+text = "Every run, wicket and record will be permanently deleted. This cannot be undone."
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 2
+
+[node name="ResetBtns" type="HBoxContainer" parent="ResetConfirm/ResetPanel/ResetVBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="ResetYesBtn" type="Button" parent="ResetConfirm/ResetPanel/ResetVBox/ResetBtns"]
+custom_minimum_size = Vector2(150, 48)
+text = "🗑 Erase Everything"
+tooltip_text = "Permanently delete all career records"
+
+[node name="ResetNoBtn" type="Button" parent="ResetConfirm/ResetPanel/ResetVBox/ResetBtns"]
+custom_minimum_size = Vector2(150, 48)
+text = "▶ Keep Records"
+tooltip_text = "Close this dialog and keep your records"

@@ -41,20 +41,30 @@ func _ready() -> void:
 	set_sfx_volume(GameManager.sfx_volume)
 
 func play_bat_hit() -> void:
-	if sfx_bat_hit.stream:
-		sfx_bat_hit.play()
+	_play_with_pitch(sfx_bat_hit, 0.92, 1.08)
 
 func play_crowd_cheer() -> void:
-	if sfx_crowd_cheer.stream:
-		sfx_crowd_cheer.play()
+	_play_with_pitch(sfx_crowd_cheer, 0.96, 1.06)
 
 func play_wicket() -> void:
-	if sfx_wicket.stream:
-		sfx_wicket.play()
+	_play_with_pitch(sfx_wicket, 0.94, 1.06)
 
 func play_click() -> void:
+	_play_with_pitch(sfx_click, 0.98, 1.02)
+
+# Gentle random pitch per hit — identical replays sound mechanical.
+func _play_with_pitch(player: AudioStreamPlayer, lo: float, hi: float) -> void:
+	if player.stream:
+		player.pitch_scale = randf_range(lo, hi)
+		player.play()
+
+# Countdown urgency tick — fired by the HUD in its last second.
+func play_tick() -> void:
 	if sfx_click.stream:
+		var prev := sfx_click.pitch_scale
+		sfx_click.pitch_scale = 1.35
 		sfx_click.play()
+		sfx_click.pitch_scale = prev
 
 func start_ambient() -> void:
 	if sfx_ambient_crowd.stream and not sfx_ambient_crowd.playing:

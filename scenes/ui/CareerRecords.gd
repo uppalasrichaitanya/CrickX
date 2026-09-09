@@ -6,6 +6,9 @@ extends Control
 @onready var lbl_empty := $Scroll/VBox/EmptyLabel
 @onready var btn_back := $BottomBar/BtnBack
 @onready var btn_reset := $BottomBar/BtnReset
+@onready var reset_confirm := $ResetConfirm
+@onready var btn_reset_yes := $ResetConfirm/ResetPanel/ResetVBox/ResetBtns/ResetYesBtn
+@onready var btn_reset_no := $ResetConfirm/ResetPanel/ResetVBox/ResetBtns/ResetNoBtn
 
 const BAT_COLS := ["BATSMAN", "TEAM", "M", "RUNS", "50s", "100s", "SR", "BEST"]
 const BAT_W := [190, 130, 36, 56, 40, 44, 62, 52]
@@ -17,7 +20,10 @@ func _ready() -> void:
 	var fade := create_tween()
 	fade.tween_property(self, "modulate:a", 1.0, Constants.SCENE_FADE_DURATION)
 	btn_back.pressed.connect(_on_back)
-	btn_reset.pressed.connect(_on_reset)
+	btn_reset.pressed.connect(_on_reset_pressed)
+	btn_reset_yes.pressed.connect(_on_reset_confirmed)
+	btn_reset_no.pressed.connect(func(): reset_confirm.visible = false)
+	reset_confirm.visible = false
 	CareerManager.career_updated.connect(_refresh)
 	_refresh()
 
@@ -71,9 +77,19 @@ func _add_row(parent: Control, widths: Array, cols: Array, is_header: bool) -> v
 		hb.add_child(lbl)
 	parent.add_child(hb)
 
-func _on_reset() -> void:
-	CareerManager.reset()
+func _on_reset_pressed() -> void:
 	AudioManager.play_click()
+	reset_confirm.visible = true
+	btn_reset_no.grab_focus()  # Safe default: keep records
+
+func _on_reset_confirmed() -> void:
+	AudioManager.play_click()
+	reset_confirm.visible = false
+	CareerManager.reset()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if reset_confirm.visible and event.is_action_pressed("ui_cancel"):
+		reset_confirm.visible = false
 
 func _on_back() -> void:
 	AudioManager.play_click()

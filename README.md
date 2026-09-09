@@ -75,7 +75,7 @@ Releases are built automatically by CI from version tags (`v*`) using Godot 4.2.
 ## 🎮 How to Play
 
 1. Run the project from the Godot editor (`F5`).
-2. From the **Main Menu**, choose **Quick Match**, **Tournament**, **Multiplayer** (hot-seat or LAN), **Records**, or **Settings**.
+2. From the **Main Menu**, choose **Quick Match**, **Tournament**, **Multiplayer** (hot-seat or LAN), **Records**, or **Settings** (difficulty sets your per-ball reaction window: Easy 8s / Medium 6s / Hard 4s; volume changes save instantly).
 
 ### Batting & bowling
 
@@ -83,13 +83,16 @@ Releases are built automatically by CI from version tags (`v*`) using Godot 4.2.
 |---|---|
 | `1`–`6` | Pick a shot when batting (Drive / Pull / Sweep / Slog / Block / Leave) |
 | `1`–`4` | Pick a delivery when bowling (depends on bowler: pace or spin menu) |
+| `Space` | Safe block — instantly play the defensive shot while batting |
 | `Enter`/`Space` | Confirm the hot-seat handoff (reveal the locked-in delivery) |
-| ⏩ button | Fast-forward: collapse the waits between balls |
-| 🧭 button | Toggle the wagon-wheel overlay |
-| ✕ button | Quit the match (asks first — abandoned matches save no result) |
+| `F` | Toggle fast-forward (collapse the waits between balls) |
+| `C` | Toggle the wagon-wheel overlay |
+| `Esc` | Quit confirm (abandoned matches save no result) |
+| Any key/click | Dismiss over-summary, innings-break and super-over popups instantly |
+| ⏩ / 🧭 / ✕ | Same as `F` / `C` / `Esc` via the status-bar buttons |
 
 3. In **Team Select**, pick teams, format and mode — then pick your **playing XI** from the 15-man squad (order sets the batting order; at least one bowler required, auto-pick available).
-4. Watch the **Delivery Alert** (e.g. `🏏 YORKER!`) — you have a **4-second reaction window** to choose your shot.
+4. Watch the **Delivery Alert** (e.g. `🏏 YORKER!`) — your **reaction window follows the difficulty setting**: Easy 8s / Medium 6s / Hard 4s, with a visible countdown. Pressing early during the run-up locks your shot in, so it plays the moment the panel opens.
 5. On an LBW/caught dismissal you get a **5-second DRS window** to challenge.
 6. In tournaments, call the **toss** (win it and choose to bat or bowl), play your fixtures, sim the rest, and lift the cup through groups → semis → final.
 7. Level T20 scores go to a **super over** — sudden death until someone wins.
@@ -160,7 +163,7 @@ CI (`.github/workflows/ci.yml`) additionally does a strict editor-import pass th
 | Stale import / weird editor errors | Close editor, delete `.godot/`, reopen and reimport |
 | LAN join fails | Same network (or loopback `127.0.0.1` for testing), default port `54000`, check firewall allows UDP |
 | Headless test crashes on load | Ensure you run with `--path .` from the repo root so `res://` resolves |
-| Settings not sticking | They save to `user://settings.cfg` on leaving the Settings screen |
+| Settings not sticking | They save to `user://settings.cfg` immediately on change (volume/difficulty) and on leaving the Settings screen |
 | Opponent disconnects mid-match (LAN) | Host shows a connection-lost overlay and returns to menu; client does the same |
 
 ## 🤝 Contributing
