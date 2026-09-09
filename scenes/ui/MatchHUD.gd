@@ -719,10 +719,17 @@ func _on_quit_confirmed() -> void:
 	# Stop all input paths first so nothing fires during the fade-out.
 	is_waiting_for_input = false
 	is_waiting_for_bowl = false
+	_queued_shot = -1
 	shot_panel.visible = false
 	bowl_panel.visible = false
 	drs_popup.visible = false
 	MatchEngine.abort_match()
+	# An abandoned match must leave no trace — clear the pending tournament
+	# fixture + any stale winner meta so the hub can't record a phantom result.
+	if GameManager.has_meta("pending_fixture_result"):
+		GameManager.remove_meta("pending_fixture_result")
+	if GameManager.has_meta("match_winner"):
+		GameManager.remove_meta("match_winner")
 	if NetworkManager.online:
 		NetworkManager.disconnect_gracefully()
 	var fade := create_tween()
@@ -963,11 +970,17 @@ func _on_over_ended(summary: Dictionary) -> void:
 
 func _on_second_innings_starting() -> void:
 	# Show innings break overlay
-	innings_break_popup.visible = true
 	var target = GameManager.state.get("total_runs", 0) + 1
+	# Roles re-derive AFTER this signal (engine swaps innings next) — compute
+	# the chase roles from the human's team directly, not stale flags.
 	var tail = "AI batting in progress..."
-	if MatchEngine.is_human_bowling:
-		tail = "AI batting — you bowl!"
+	if MatchEngine.human_side != null and MatchEngine.human_side != GameManager.batting_team:
+		if MatchEngine.human_bowls_role or MatchEngine.hotseat:
+			tail = "AI batting — you bowl!"
+		else:
+			tail = "AI batting — watch the chase!"
+	elif MatchEngine.human_side == GameManager.batting_team:
+		tail = "YOU bat — chase it down!"
 	lbl_innings_break.text = "INNINGS BREAK\n\n" + GameManager.bowling_team.team_name + " need " + str(target) + " to win!\n\n" + tail
 	
 	_dismissible_wait(0.5 if MatchEngine.fast_forward else 3.0, innings_break_popup)

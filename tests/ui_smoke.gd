@@ -102,6 +102,18 @@ func _run() -> void:
 	engine.fast_forward = true
 	engine.abort_match()
 	_check(not engine.fast_forward, "abort_match must reset fast_forward")
+	# 6d. Input map must define the advertised F/C shortcuts (dead-shortcut bug).
+	_check(InputMap.has_action("ff_toggle"), "ff_toggle action missing — F shortcut dead")
+	_check(InputMap.has_action("wagon_toggle"), "wagon_toggle action missing — C shortcut dead")
+	# 6e. TournamentHub: Resume button exists and mirrors save presence.
+	var hub = load("res://scenes/ui/TournamentHub.tscn").instantiate()
+	_checks += 1
+	root.add_child(hub)
+	await process_frame
+	_check(hub.has_node("PickPanel/PickVBox/BtnResume"), "TournamentHub BtnResume missing")
+	var tm = root.get_node("TournamentManager")
+	_check(hub.get_node("PickPanel/PickVBox/BtnResume").visible == tm.has_save(),
+		"BtnResume visibility must match save presence")
 	var consts = root.get_node("Constants")
 	_check(consts.human_input_timeout(0) == 8.0, "Easy timeout must be 8s")
 	_check(consts.human_input_timeout(1) == 6.0, "Medium timeout must be 6s")

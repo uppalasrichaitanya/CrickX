@@ -12,8 +12,6 @@ signal over_completed(over_number: int, runs_this_over: int, wickets_this_over: 
 signal innings_ended(scorecard: Dictionary)
 signal match_ended(winner: String, scorecard: Dictionary)
 signal drs_initiated(team_name: String, decision_type: String)
-signal milestone_reached(player: PlayerData, milestone: String)
-signal momentum_shifted(favoring_team: String, amount: float)
 
 # ═══════════════════════════════════════
 # MATCH STATE — The single source of truth

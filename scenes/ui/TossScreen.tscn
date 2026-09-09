@@ -154,7 +154,6 @@ custom_minimum_size = Vector2(150, 50)
 layout_mode = 2
 text = "← Back"
 tooltip_text = "Cancel the toss and go back"
-tooltip_text = "Back to tournament hub"
 
 [node name="BtnStart" type="Button" parent="StartRow"]
 custom_minimum_size = Vector2(260, 50)

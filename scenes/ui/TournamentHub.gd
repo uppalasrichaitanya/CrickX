@@ -16,28 +16,41 @@ extends Control
 @onready var pick_panel := $PickPanel
 @onready var pick_list := $PickPanel/PickVBox/PickList
 @onready var btn_pick := $PickPanel/PickVBox/BtnPick
+@onready var btn_resume := $PickPanel/PickVBox/BtnResume
 
 func _ready() -> void:
 	modulate.a = 0.0
 	var fade := create_tween()
 	fade.tween_property(self, "modulate:a", 1.0, Constants.SCENE_FADE_DURATION)
-	
+
 	btn_play.pressed.connect(_on_play)
 	btn_sim.pressed.connect(_on_sim)
 	btn_squad.pressed.connect(_on_squad)
 	btn_abandon.pressed.connect(_on_abandon)
 	btn_back.pressed.connect(_on_back)
 	btn_pick.pressed.connect(_on_team_picked)
+	btn_resume.pressed.connect(_on_resume_saved)
 	TournamentManager.stage_changed.connect(_refresh)
 	TournamentManager.champion_crowned.connect(func(_w: String) -> void: _refresh())
-	
-	# No active tournament (and no completed one to view) -> team picker
+
+	# No active tournament (and no completed one to view) -> team picker,
+	# with a Resume option if a save exists on disk.
 	if not TournamentManager.is_active() and TournamentManager.champion == "":
+		btn_resume.visible = TournamentManager.has_save()
 		_show_team_picker()
 	else:
 		pick_panel.visible = false
 		_record_pending_match_result()
 		_refresh()
+
+func _on_resume_saved() -> void:
+	if not TournamentManager.load_saved():
+		btn_resume.visible = false
+		return
+	AudioManager.play_click()
+	pick_panel.visible = false
+	_record_pending_match_result()
+	_refresh()
 
 # After a human-played match, the Scorecard routes back here — record its
 # result into the standings using the meta the match flow left behind.

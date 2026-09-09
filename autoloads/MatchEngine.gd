@@ -2,7 +2,6 @@
 # NEW FLOW: Bowler picks delivery → Reveal to batsman → Batsman reacts with shot.
 extends Node
 
-signal state_changed(new_state: String)
 signal ball_result_ready(outcome: Dictionary)
 signal over_ended(summary: Dictionary)
 signal innings_ended_signal(scorecard: Dictionary)
